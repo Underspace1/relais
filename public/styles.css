@@ -881,3 +881,71 @@ button.sl-item:hover { background: var(--surface-2); color: var(--text-2); }
 .pop-item.cmd { grid-template-columns: minmax(150px, max-content) 1fr; gap: 0 14px; padding: 6px 10px; }
 .pop-item.cmd b { grid-row: 1; }
 .pop-item.cmd span { grid-column: 2; grid-row: 1; }
+
+/* ==========================================================================
+   Logo, animation d'ouverture, assistant de configuration
+   ========================================================================== */
+.logo { width: 26px; height: 26px; background: none; border-radius: 0; display: block; flex: none; }
+.logo .logo-bg { fill: #161615; }
+.logo .logo-ring { stroke: #161615; }
+:root[data-theme='light'] .logo .logo-bg { fill: #1b1a18; }
+
+.splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 40%, #1b1a18 0%, #0b0b0c 70%); color: #f3f3f4; transition: opacity .5s ease, visibility .5s; cursor: pointer; }
+.splash.out { opacity: 0; visibility: hidden; }
+.no-splash .splash { display: none; }
+.splash-inner { display: grid; justify-items: center; gap: 2px; transform: translateY(-3vh); }
+.splash-logo { width: 116px; height: 116px; overflow: visible; filter: drop-shadow(0 18px 40px rgba(224, 122, 79, .18)); }
+.sp-bg { transform-origin: 32px 32px; animation: sp-pop .7s cubic-bezier(.2, .9, .25, 1.15) both; }
+.sp-path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sp-draw 1.15s cubic-bezier(.6, 0, .25, 1) .35s forwards; }
+.sp-node { transform-box: fill-box; transform-origin: center; transform: scale(0); animation: sp-node .45s cubic-bezier(.2, .9, .3, 1.6) forwards; }
+.sp-node.n1 { animation-delay: .3s; }
+.sp-node.n2 { animation-delay: .95s; }
+.sp-node.n3 { animation-delay: 1.45s; }
+.splash-sign { width: 300px; height: 100px; margin-top: 4px; overflow: visible; }
+.sp-text { font: 400 76px 'Great Vibes', 'Segoe Script', 'Brush Script MT', cursive; fill: #f3f3f4; fill-opacity: 0; stroke: #f3f3f4; stroke-width: .9; stroke-dasharray: 420; stroke-dashoffset: 420;
+  animation: sp-write 1.6s cubic-bezier(.45, 0, .3, 1) 1.15s forwards, sp-ink .6s ease 2.3s forwards; }
+.sp-reveal { transform: scaleX(0); transform-origin: 0 0; animation: sp-reveal 1.55s cubic-bezier(.45, 0, .35, 1) 1.15s forwards; }
+.sp-flourish { stroke: #e07a4f; stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .8; animation: sp-draw .7s ease-out 2.35s forwards; }
+.splash-tag { margin: 6px 0 0; font-size: 13.5px; color: #85858d; letter-spacing: .01em; opacity: 0; animation: sp-fade .6s ease 2.6s forwards; }
+@keyframes sp-pop { from { transform: scale(.55); opacity: 0; } }
+@keyframes sp-draw { to { stroke-dashoffset: 0; } }
+@keyframes sp-node { to { transform: scale(1); } }
+@keyframes sp-write { to { stroke-dashoffset: 0; } }
+@keyframes sp-ink { to { fill-opacity: 1; stroke-opacity: .25; } }
+@keyframes sp-reveal { to { transform: scaleX(1.12); } }
+@keyframes sp-fade { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sp-path, .sp-flourish { stroke-dashoffset: 0; }
+  .sp-node { transform: none; }
+  .sp-reveal { transform: none; }
+  .sp-text { stroke-dashoffset: 0; fill-opacity: 1; }
+  .splash-tag { opacity: 1; }
+}
+
+/* Assistant de configuration */
+.wiz-nav-step { display: flex; align-items: center; gap: 10px; }
+.wiz-num { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 600 10.5px var(--mono); background: var(--surface-3); color: var(--muted); flex: none; }
+.modal-nav button.done .wiz-num { background: var(--ok); color: #fff; }
+.modal-nav button.active .wiz-num { background: var(--text); color: var(--bg); }
+.wiz-hero { display: flex; gap: 18px; align-items: center; margin: 4px 0 22px; }
+.wiz-hero svg.logo { width: 56px; height: 56px; }
+.wiz-hero h3 { margin: 0 0 4px; font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+.wiz-hero p { margin: 0; color: var(--muted); font-size: 13.5px; }
+.wiz-progress { height: 3px; background: var(--surface-3); border-radius: 99px; overflow: hidden; margin: 0 0 18px; }
+.wiz-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--c-claude), var(--c-chatgpt)); transition: width .35s ease; }
+.wiz-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.wiz-choice { display: grid; gap: 6px; text-align: left; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); transition: border-color .15s, background .15s; }
+.wiz-choice:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.wiz-choice.on { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
+.wiz-choice b { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+.wiz-choice span { font-size: 12.3px; color: var(--muted); line-height: 1.45; }
+.wiz-choice b svg { width: 15px; height: 15px; }
+.wiz-recap { display: grid; gap: 8px; margin: 0 0 18px; }
+.wiz-recap div { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line); font-size: 13.5px; }
+.wiz-recap .ok { color: var(--ok); }
+.wiz-recap .no { color: var(--muted); }
+.wiz-recap svg { width: 16px; height: 16px; }
+.wiz-recap em { font-style: normal; margin-left: auto; color: var(--muted); font-size: 12.5px; }
+@media (max-width: 900px) { .wiz-choices { grid-template-columns: 1fr; } }
+/* Le style global des icônes (trait 1,7) ne doit pas s'appliquer au logo */
+svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-width: 0; }

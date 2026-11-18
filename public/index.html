@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Great+Vibes&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script>
     try {
@@ -15,15 +15,48 @@
       if (p.theme && p.theme !== 'auto') document.documentElement.dataset.theme = p.theme;
       if (p.fontSize) document.documentElement.dataset.size = p.fontSize;
       if (p.width) document.documentElement.dataset.width = p.width;
+      if (p.splash === false || sessionStorage.getItem('relais-splash')) document.documentElement.classList.add('no-splash');
     } catch {}
   </script>
 </head>
 <body>
+  <!-- Animation d'ouverture : le « R » se trace, les trois IA s'allument, « Relais » s'écrit en signature -->
+  <div class="splash" id="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <svg class="splash-logo" viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="sp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#252422"/><stop offset="1" stop-color="#0e0e10"/></linearGradient>
+          <linearGradient id="sp-ink" gradientUnits="userSpaceOnUse" x1="20" y1="50" x2="44" y2="18"><stop offset="0" stop-color="#e07a4f"/><stop offset=".25" stop-color="#e07a4f"/><stop offset=".75" stop-color="#22b083"/><stop offset="1" stop-color="#7fd9b8"/></linearGradient>
+        </defs>
+        <rect class="sp-bg" width="64" height="64" rx="15" fill="url(#sp-bg)"/>
+        <g transform="translate(-0.5 -1.5)">
+          <path class="sp-path" pathLength="1" d="M21 49V22.5Q21 16 27.5 16H32.5A11 11 0 0 1 32.5 38H27L44 49" fill="none" stroke="url(#sp-ink)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <g stroke="#171716" stroke-width="2">
+            <circle class="sp-node n1" cx="21" cy="49" r="4.6" fill="#e07a4f"/>
+            <circle class="sp-node n2" cx="43.5" cy="27" r="4.6" fill="#22b083"/>
+            <circle class="sp-node n3" cx="44" cy="49" r="4.6" fill="#ecebe6"/>
+          </g>
+        </g>
+      </svg>
+      <svg class="splash-sign" viewBox="0 0 360 120">
+        <defs>
+          <linearGradient id="sp-reveal" x1="0" x2="1"><stop offset=".85" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <mask id="sp-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="360" height="120"><rect class="sp-reveal" x="0" y="0" width="360" height="120" fill="url(#sp-reveal)"/></mask>
+        </defs>
+        <g mask="url(#sp-mask)">
+          <text class="sp-text" x="180" y="78" text-anchor="middle">Relais</text>
+          <path class="sp-flourish" pathLength="1" d="M70 96C130 90 210 88 300 94" fill="none"/>
+        </g>
+      </svg>
+      <p class="splash-tag">Claude, ChatGPT et Grok, ensemble.</p>
+    </div>
+  </div>
+
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar">
       <div class="side-top">
         <div class="brand">
-          <span class="logo" aria-hidden="true"><i></i><i></i><i></i></span>
+          <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg-ink" gradientUnits="userSpaceOnUse" x1="20" y1="50" x2="44" y2="18"><stop offset="0" stop-color="#e07a4f"/><stop offset=".25" stop-color="#e07a4f"/><stop offset=".75" stop-color="#22b083"/><stop offset="1" stop-color="#7fd9b8"/></linearGradient></defs><rect width="64" height="64" rx="15" class="logo-bg"/><g transform="translate(-0.5 -1.5)"><path d="M21 49V22.5Q21 16 27.5 16H32.5A11 11 0 0 1 32.5 38H27L44 49" fill="none" stroke="url(#lg-ink)" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/><g class="logo-ring" stroke-width="2.4"><circle cx="21" cy="49" r="5" fill="#e07a4f"/><circle cx="43.5" cy="27" r="5" fill="#22b083"/><circle cx="44" cy="49" r="5" fill="#ecebe6"/></g></g></svg>
           <span class="brand-name">Relais</span>
         </div>
         <button class="icon-btn" id="newChatIcon" type="button" aria-label="Nouvelle conversation" title="Nouvelle conversation (Ctrl K)">
