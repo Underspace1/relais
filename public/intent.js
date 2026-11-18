@@ -22,6 +22,7 @@ const CODE = /\b(script|scripts|code|luau|lua|bug|erreur|fonction|module|fichier
 const GPT = /(@chatgpt|@gpt|\bchat ?gpt\b|\bopenai\b|\bgpt\b|\bcodex\b|\bdall-?e\b)/;
 const GROK = /(@grok|\bgrok\b|\bxai\b)/;
 const GEMINI = /(@gemini|\bgemini\b|\bnano ?banana\b|\bbard\b)/;
+const LOCAL = /(@local|@locale|\bollama\b|\blm ?studio\b|\bia locale\b|\bmodele local\b)/;
 const PERPLEXITY = /(@perplexity|@pplx|\bperplexity\b|\bpplx\b)/;
 // Recherche web : verbes de recherche, ou questions sur l'actualité / des faits qui changent
 const SEARCH = /\b(cherche|chercher|recherche|rechercher|trouve[- ]moi|trouve|google|googlise|search|look up|sources?)\b/;
@@ -44,7 +45,9 @@ export function detectIntent(text) {
   const grok = GROK.test(t);
   const gemini = GEMINI.test(t);
   const pplx = PERPLEXITY.test(t);
-  const explicit = /@(chatgpt|gpt|grok|gemini|perplexity|pplx|image|design)\b/.test(t);
+  const local = LOCAL.test(t);
+  const explicit = /@(chatgpt|gpt|grok|gemini|perplexity|pplx|local|locale|image|design)\b/.test(t);
+  if (local && !/\b(images?|dessine)\b/.test(t)) return { relay: 'ask-local', label: 'Avis de l’IA locale', chain: ['claude', 'local'], explicit, engines: ['local'], kind: 'ask' };
   const draws = /\b(dessine|dessiner|redessine|illustre|peins|peindre|draw|paint)\b/.test(t);
   const wantsImage = (/@image\b/.test(t) || draws || (IMAGE_NOUN.test(t) && (IMAGE_VERB.test(t) || !QUESTION.test(t)))) && !QUESTION.test(t.replace(/^@\w+\s*/, ''));
   const both = [gpt, grok, gemini].filter(Boolean).length >= 2 || BOTH.test(t);
@@ -95,5 +98,5 @@ export function withEngine(intent, engine) {
 
 /** Retire les @mentions du texte envoyé aux IA. */
 export function stripMentions(text) {
-  return String(text || '').replace(/(^|\s)@(chatgpt|gpt|grok|gemini|perplexity|pplx|image|design|claude)\b/gi, '$1').replace(/\s{2,}/g, ' ').trim();
+  return String(text || '').replace(/(^|\s)@(chatgpt|gpt|grok|gemini|perplexity|pplx|local|locale|image|design|claude)\b/gi, '$1').replace(/\s{2,}/g, ' ').trim();
 }

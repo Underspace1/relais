@@ -15,8 +15,10 @@ const AGENTS = {
   grok: { name: 'Grok', mono: 'Gk' },
   gemini: { name: 'Gemini', mono: 'Gm' },
   perplexity: { name: 'Perplexity', mono: 'Px' },
+  local: { name: 'IA locale', mono: '<svg viewBox="0 0 24 24" class="ai-logo" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="4.5" width="17" height="11" rx="2"/><path d="M8 20h8M12 15.5V20"/></svg>' },
   cursor: { name: 'Cursor', mono: 'Cu' },
   skill: { name: 'Skill', mono: 'Sk' },
+  mcp: { name: 'MCP', mono: '<svg viewBox="0 0 24 24" class="ai-logo"><rect x="4" y="4" width="16" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5"/></svg>' },
   shell: { name: 'Terminal', mono: '>_' },
 };
 // Logos officiels dans les avatars (Claude, ChatGPT, Grok, Gemini, Perplexity, Cursor)
@@ -38,7 +40,7 @@ const I = {
   star: '<svg viewBox="0 0 24 24"><path d="M12 3.8l2.5 5.1 5.6.8-4.05 3.95.96 5.6L12 16.6l-5.01 2.65.96-5.6L3.9 9.7l5.6-.8z"/></svg>',
   thumbUp: '<svg viewBox="0 0 24 24"><path d="M7.5 10.5v9h-3v-9zM7.5 10.5l3.6-6.3a1.6 1.6 0 0 1 2.9 1.2l-.9 3.6h5a1.8 1.8 0 0 1 1.75 2.2l-1.4 6.3a1.8 1.8 0 0 1-1.75 1.5H7.5"/></svg>',
   thumbDown: '<svg viewBox="0 0 24 24"><path d="M16.5 13.5v-9h3v9zM16.5 13.5l-3.6 6.3a1.6 1.6 0 0 1-2.9-1.2l.9-3.6h-5a1.8 1.8 0 0 1-1.75-2.2l1.4-6.3A1.8 1.8 0 0 1 7.3 4.5h9.2"/></svg>',
-  claudeSpark: '<svg viewBox="0 0 24 24" class="spark" fill="currentColor" stroke="none"><path d="M12 2.2c.5 0 .8.3.9.8l.7 5.4 3.5-4.2c.3-.4.8-.4 1.2-.1.3.3.4.8.1 1.2l-3.3 4.3 5.4-.6c.5 0 .9.3.9.8s-.3.9-.8.9l-5.4.7 4.2 3.5c.4.3.4.8.1 1.2-.3.3-.8.4-1.2.1l-4.3-3.3.6 5.4c0 .5-.3.9-.8.9s-.9-.3-.9-.8l-.7-5.4-3.5 4.2c-.3.4-.8.4-1.2.1-.3-.3-.4-.8-.1-1.2l3.3-4.3-5.4.6c-.5 0-.9-.3-.9-.8s.3-.9.8-.9l5.4-.7-4.2-3.5c-.4-.3-.4-.8-.1-1.2.3-.3.8-.4 1.2-.1l4.3 3.3-.6-5.4c0-.5.3-.9.8-.9z"/></svg>',
+  relayMark: '<svg viewBox="0 0 40 40" class="relay-mark" aria-hidden="true"><path class="rm-link" d="M9.5 29.5C12 17 16 11 20 9.5c4 1.5 8 7.5 10.5 20M9.5 29.5h21" fill="none" stroke-width="2.6" stroke-linecap="round"/><circle cx="9.5" cy="29.5" r="5" fill="#e07a4f"/><circle cx="20" cy="9.5" r="5" fill="#22b083"/><circle cx="30.5" cy="29.5" r="5" fill="#5b8def"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   plug2: '<svg viewBox="0 0 24 24"><path d="M9 3.5v4M15 3.5v4M6.5 7.5h11V11a5.5 5.5 0 0 1-11 0zM12 16.5v4"/></svg>',
   image: '<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8 8.5"/></svg>',
@@ -110,10 +112,10 @@ const EFFORT_INFO = {
 };
 // Nom de l'agent qui code dans un projet : l'outil officiel (compte) ou l'agent intégré à Relais (OpenRouter, clé API).
 const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build', gemini: 'Gemini CLI' };
-const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH' };
+const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH', local: 'LOCAL_URL' };
 // IA à qui l'on peut écrire directement. Perplexity cherche sur le web mais ne code pas dans un projet.
-const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity'];
-const CODERS = ['claude', 'chatgpt', 'grok', 'gemini'];
+const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity', 'local'];
+const CODERS = ['claude', 'chatgpt', 'grok', 'gemini', 'local'];
 const CODER_NAME = new Proxy({}, {
   get: (_, k) => {
     if (!OFFICIAL_CODER[k]) return undefined;
@@ -283,6 +285,7 @@ function connState(id) {
   const authKey = { claude: 'CLAUDE_AUTH', codex: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH' }[id];
   const keyName = { claude: 'anthropic', codex: 'openai', grok: 'xai', gemini: 'gemini', perplexity: 'perplexity' }[id];
   if (!state.status) return { label: '—', ok: false };
+  if (id === 'local') return s.LOCAL_URL ? { label: 'locale', ok: !!state.status.available?.local } : { label: 'à configurer', ok: false };
   if (s[authKey] === 'api') return s.keys?.[keyName] ? { label: 'clé API', ok: true } : { label: 'pas de clé', ok: false };
   if (s[authKey] === 'openrouter') return s.keys?.openrouter ? { label: 'openrouter', ok: true } : { label: 'pas de clé', ok: false };
   const c = state.connectors?.[id];
@@ -299,7 +302,7 @@ function renderConnCard() {
   const b = $('#profileBtn');
   if (!b) return;
   const name = settings().USER_NAME || 'Toi';
-  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity']];
+  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity'], ...(settings().LOCAL_URL ? [['local', 'local']] : [])];
   const states = rows.map(([id, a]) => [a, connState(id)]);
   const n = states.filter(([, st]) => st.ok).length;
   b.innerHTML = `<span class="initial">${esc(name.trim()[0]?.toUpperCase() || 'R')}</span>
@@ -357,7 +360,7 @@ function chainHtml(chain) {
 
 function relayAvailable(r) {
   const a = av();
-  const need = { 'image-grok': a.imageGrok, 'image-chatgpt': a.imageChatgpt, 'image-gemini': a.imageGemini, 'image-edit': a.claude && a.imageGemini, 'roblox-icon': a.imageChatgpt, 'roblox-thumb': a.imageChatgpt, 'image-both': a.claude && a.imageChatgpt && a.imageGrok, 'ask-chatgpt': a.chatgpt, 'ask-grok': a.grok, 'ask-gemini': a.gemini, search: a.perplexity, 'search-deep': a.claude && a.perplexity, debate: a.claude && [a.chatgpt, a.grok, a.gemini].filter(Boolean).length >= 1, 'code-review': a.claude && a.chatgpt, 'code-project': a.claude, 'roblox-script': a.claude };
+  const need = { 'image-grok': a.imageGrok, 'image-chatgpt': a.imageChatgpt, 'image-gemini': a.imageGemini, 'image-edit': a.claude && a.imageGemini, 'roblox-icon': a.imageChatgpt, 'roblox-thumb': a.imageChatgpt, 'image-both': a.claude && a.imageChatgpt && a.imageGrok, 'ask-chatgpt': a.chatgpt, 'ask-grok': a.grok, 'ask-gemini': a.gemini, search: a.perplexity, 'search-deep': a.claude && a.perplexity, 'ask-local': a.local, debate: a.claude && [a.chatgpt, a.grok, a.gemini].filter(Boolean).length >= 1, 'code-review': a.claude && a.chatgpt, 'code-project': a.claude, 'roblox-script': a.claude };
   return need[r.id] === undefined ? true : !!need[r.id];
 }
 
@@ -391,7 +394,7 @@ function renderEmpty() {
   const none = state.status && !MODES.some((k) => a[k]);
   inner.innerHTML = '';
   inner.append(h(`<div class="empty home">
-    <div class="hello-row">${state.incognito ? `<span class="spark">${I.ghost}</span>` : I.claudeSpark}<h2 class="hello">${esc(greeting())}</h2></div>
+    <div class="hello-row">${state.incognito ? `<span class="spark">${I.ghost}</span>` : I.relayMark}<h2 class="hello">${esc(greeting())}</h2></div>
     ${state.incognito ? '<p class="lede" style="margin:10px auto 0">Cette conversation ne sera ni enregistrée, ni ajoutée à la mémoire de Relais.</p>' : ''}
     ${none ? '<div class="setup"><span class="avatar" data-agent="claude">' + AGENTS.claude.mono + '</span><div><b>Connecte tes IA</b><span>Une clé OpenRouter (rien à installer) ou tes abonnements. Tout reste dans le dossier Relais.</span></div><button class="btn accent" type="button" data-open-settings="connexions">Connecter</button></div>' : ''}
   </div>`));
@@ -463,7 +466,9 @@ function stepEl(step, wasOpen) {
   const status = step.status === 'running' ? '<span class="spinner"></span>en cours' : step.status === 'error' ? 'erreur' : step.ms ? fmtMs(step.ms) : 'terminé';
   const isText = ['chatgpt', 'grok', 'gemini', 'perplexity', 'skill'].includes(step.agent) && !step.kind;
   const open = wasOpen ?? (state.prefs.stepsOpen || step.status === 'error' || step.agent === 'shell');
+  const by = step.by === 'toi' ? 'choisi par toi' : step.relay && step.why ? 'choisi par Claude' : '';
   const body = `
+    ${step.why ? `<div class="step-why">${I.relay}<span><b>${step.by === 'toi' ? 'Choix' : `Pourquoi ${esc(AGENTS[a]?.name || '')}`}</b> · ${esc(step.why)}${by && step.by !== 'toi' ? ` <em>(${by})</em>` : ''}</span></div>` : ''}
     ${step.diff ? diffHtml(step.diff) : ''}
     ${step.input && !step.diff ? `<div class="step-label">${step.agent === 'skill' ? 'Description' : step.kind === 'command' ? 'Commande' : step.kind ? 'Détail' : 'Consigne'}</div><div class="step-input">${esc(step.input)}</div>` : ''}
     ${step.output ? `<div class="step-label">${step.status === 'error' ? 'Erreur' : step.agent === 'skill' ? 'Instructions' : 'Réponse'}</div>
@@ -473,7 +478,7 @@ function stepEl(step, wasOpen) {
   return h(`<div class="step part-step ${open ? 'open' : ''} ${step.relay ? 'is-relay' : ''}" data-id="${esc(step.id)}" data-status="${esc(step.status || 'done')}" data-agent="${a}">
     <button type="button" class="step-head" aria-expanded="${open}">
       ${head}
-      <span class="step-title">${esc(step.title || 'Étape')}</span>
+      <span class="step-title">${esc(step.title || 'Étape')}${step.by === 'toi' ? '<span class="step-by">ton choix</span>' : ''}</span>
       <span class="step-preview">${esc(preview)}</span>
       <span class="step-status">${status}</span>${I.chev}
     </button><div class="step-body">${body}</div></div>`);
@@ -563,6 +568,23 @@ function permissionEl(d, agent) {
       <button type="button" class="btn sm" data-perm="always">Toujours autoriser « ${esc(d.tool)} » ici</button>
       <button type="button" class="btn sm danger right" data-perm="deny">Refuser</button>
     </div></div>`);
+}
+
+/** Pont entre IA, mode « Me demander » : l'utilisateur choisit l'IA, la recommandation de Claude en tête. */
+function choiceEl(d) {
+  const opts = [...d.options].sort((a, b) => (b.id === d.recommended) - (a.id === d.recommended));
+  return h(`<div class="choice-card" data-choice-id="${esc(d.id)}">
+    <div class="choice-top">${I.relay}<div><b>${esc(d.title)}</b>${d.reason ? `<span>Claude recommande ${esc(AGENTS[d.recommended]?.name || d.recommended)} : ${esc(d.reason)}</span>` : ''}</div></div>
+    <div class="choice-opts">${opts.map((o) => `<button type="button" class="choice-opt ${o.id === d.recommended ? 'rec' : ''}" data-choice-pick="${esc(o.id)}">
+      <span class="avatar" data-agent="${esc(o.id)}">${AGENTS[o.id]?.mono || ''}</span>
+      <span class="co-txt"><b>${esc(o.label)}${o.id === d.recommended ? '<em>Recommandé</em>' : ''}</b><small>${esc(o.hint || '')}</small></span></button>`).join('')}</div>
+    <div class="choice-foot"><label><input type="checkbox" data-choice-always> Ne plus me demander : laisser Claude choisir</label><button type="button" class="btn sm" data-choice-cancel>Annuler</button></div>
+  </div>`);
+}
+function settleChoice(card, d) {
+  card.classList.add('settled');
+  $('.choice-foot', card).innerHTML = `<span class="note">${d.cancel ? 'Annulé' : `Choix : ${esc(AGENTS[d.pick]?.name || d.pick || '—')}`}</span>`;
+  $$('.choice-opt', card).forEach((b) => { b.disabled = true; b.classList.toggle('picked', b.dataset.choicePick === d.pick); });
 }
 
 function settlePermission(card, decision) {
@@ -800,6 +822,14 @@ async function send(text, override) {
           view.partsEl.append(permissionEl(d, view.agent));
           scrollDown(true);
           notifyAttention(`${CODER_NAME.claude} demande une autorisation`);
+        } else if (ev === 'choice') {
+          $('.thinking', view.el)?.remove();
+          view.partsEl.append(choiceEl(d));
+          scrollDown(true);
+          notifyAttention('Relais te demande de choisir une IA');
+        } else if (ev === 'choice_done') {
+          const card = $(`[data-choice-id="${d.id}"]`);
+          if (card && !card.classList.contains('settled')) settleChoice(card, d);
         } else if (ev === 'permission_done') {
           const card = $(`[data-perm-id="${d.id}"]`);
           if (card) settlePermission(card, d.decision);
@@ -1259,6 +1289,7 @@ const MENTIONS = [
   { tag: 'Grok', agent: 'grok', hint: 'Demander à Grok (ou image Grok)' },
   { tag: 'Gemini', agent: 'gemini', hint: 'Demander à Gemini (ou image et retouche par Gemini)' },
   { tag: 'Perplexity', agent: 'perplexity', hint: 'Chercher sur le web, avec les sources' },
+  { tag: 'Locale', agent: 'local', hint: 'Demander à ton IA locale (Ollama, LM Studio…)' },
   { tag: 'Image', agent: 'chatgpt', hint: 'Générer une image' },
   { tag: 'Design', agent: 'claude', hint: 'Maquette ou prototype interactif (aperçu live)' },
 ];
@@ -1427,7 +1458,7 @@ function renderTab() {
       <div class="group">
         ${row('Thème', '', prefSeg('theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
         ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
-        ${row('Police des réponses', 'Serif comme l’app Claude, ou une police sans empattement.', prefSeg('chatFont', [['serif', 'Serif'], ['sans', 'Sans'], ['system', 'Système']]))}
+        ${row('Police des réponses', 'Newsreader (serif, agréable à lire), Onest (sans empattement) ou la police de Windows.', prefSeg('chatFont', [['serif', 'Newsreader'], ['sans', 'Onest'], ['system', 'Système']]))}
         ${row('Largeur du fil', '', prefSeg('width', [['normal', 'Normale'], ['wide', 'Large'], ['full', 'Pleine']]))}
         ${row('Animation au démarrage', 'Le logo qui se dessine et la signature « Relais ».', `<input type="checkbox" class="switch" data-pref-bool="splash" ${state.prefs.splash !== false ? 'checked' : ''}>`)}
         ${row('Assistant de configuration', 'Reprendre la configuration guidée : comptes, préférences, voix, projet.', '<button type="button" class="btn sm" data-open-setup>Relancer</button>')}
@@ -1468,6 +1499,7 @@ function renderTab() {
       </div>
       <div class="group-title">Orchestration</div>
       <div class="group">
+        ${row('Choix des IA', 'Quand tu ne nommes pas d’IA (« dessine un logo »), Relais te propose de choisir entre les IA possibles, avec la recommandation de Claude. En automatique, Claude choisit et explique pourquoi.', sel('BRIDGE_MODE', [['ask', 'Me demander'], ['auto', 'Claude choisit (automatique)']], s.BRIDGE_MODE))}
         ${row('Étapes maximum par message', 'Nombre d’allers-retours avec les autres IA avant de s’arrêter.', `<div class="range"><input type="range" min="2" max="40" data-k="MAX_STEPS" value="${esc(s.MAX_STEPS)}" oninput="this.nextElementSibling.value=this.value"><output>${esc(s.MAX_STEPS)}</output></div>`)}
       </div>
       <p class="note">Les relais (bouton « Relais » sous le champ de message) obligent Claude à passer par une IA précise : par exemple « Image · ChatGPT ».</p>`;
@@ -1575,10 +1607,37 @@ const CONNECTORS = [
     apiModel: ['PERPLEXITY_MODEL', 'Modèle'], keyLink: 'https://www.perplexity.ai/account/api/keys',
   },
 ];
+CONNECTORS.push({
+  id: 'local', agent: 'local', name: 'IA locale', authKey: 'LOCAL_MODE', keyK: 'LOCAL_KEY', mask: 'local', tool: null, modes: ['local'], custom: 'local',
+  local: 'Un modèle qui tourne sur ton PC : privé, gratuit, hors ligne. Relais s’y branche comme à ChatGPT (format compatible OpenAI) : discussion, avis demandé par Claude, et code dans tes projets avec l’agent intégré.',
+});
+const LOCAL_PRESETS = [
+  ['Ollama', 'http://127.0.0.1:11434/v1', 'https://ollama.com/download'],
+  ['LM Studio', 'http://127.0.0.1:1234/v1', 'https://lmstudio.ai'],
+  ['llama.cpp', 'http://127.0.0.1:8080/v1', 'https://github.com/ggml-org/llama.cpp'],
+  ['Jan', 'http://127.0.0.1:1337/v1', 'https://jan.ai'],
+];
+function localBlock(s) {
+  const url = s.LOCAL_URL || '';
+  const preset = LOCAL_PRESETS.find((p) => p[1] === url);
+  return `
+    <div class="field"><label>Logiciel</label><div class="seg">${LOCAL_PRESETS.map(([n, u]) => `<button type="button" data-local-preset="${esc(u)}" class="${url === u ? 'on' : ''}">${esc(n)}</button>`).join('')}<button type="button" data-local-preset="" class="${url && !preset ? 'on' : ''}">Autre</button></div></div>
+    <div class="conn-fields">
+      <div class="field"><label>Adresse du serveur</label><div style="display:flex;gap:6px"><input class="input mono" style="flex:1" data-local-url value="${esc(url)}" placeholder="http://127.0.0.1:11434/v1" spellcheck="false"><button type="button" class="btn sm" data-local-save>Enregistrer</button></div></div>
+      <div class="field"><label>Modèle</label>${modelField('LOCAL_MODEL', s.LOCAL_MODEL)}</div>
+    </div>
+    <div class="conn-actions">
+      ${url ? `<button type="button" class="btn sm" data-conn="test" data-id="local">Tester</button><button type="button" class="btn sm" data-local-refresh>${I.retry}Rafraîchir les modèles</button><button type="button" class="btn sm danger" data-local-off>Désactiver</button>` : ''}
+      ${preset?.[2] || !url ? `<a class="btn sm right" href="${esc(preset?.[2] || 'https://ollama.com/download')}" target="_blank" rel="noopener noreferrer">${I.ext}Télécharger ${esc(preset?.[0] || 'Ollama')}</a>` : ''}
+    </div>
+    <div class="conn-test" data-test-out="local"></div>
+    <p class="note">${url ? 'Les modèles installés apparaissent dans la liste. ' : ''}Avec Ollama : installe-le, puis tape par exemple <code>ollama pull qwen3</code> dans un terminal. Les petits modèles ne savent pas tous utiliser les outils : Relais s’en passe alors.</p>`;
+}
 const CLI_CONNECTORS = CONNECTORS.filter((c) => c.tool);
 
 function connPill(c) {
   const s = settings();
+  if (c.custom === 'local') return !s.LOCAL_URL ? '<span class="pill">Non configurée</span>' : av().local ? '<span class="pill ok">Configurée</span>' : '<span class="pill warn">Hors ligne</span>';
   if (s[c.authKey] === 'api') return s.keys?.[c.mask] ? '<span class="pill ok">Clé enregistrée</span>' : '<span class="pill">Pas de clé</span>';
   if (s[c.authKey] === 'openrouter') return s.keys?.openrouter ? '<span class="pill ok">OpenRouter</span>' : '<span class="pill">Clé OpenRouter manquante</span>';
   const st = state.connectors?.[c.id];
@@ -1671,15 +1730,15 @@ function renderConnexions() {
       ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
       ${c.keyAlways ? keyField : ''}`;
     const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}${!c.tool && s.keys?.[c.mask] ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button></div><div class="conn-test" data-test-out="${c.id}"></div>` : ''}`;
-    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API' };
+    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API', local: 'Sur ce PC' };
     const orBlock = orKey
-      ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button><span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span></div><div class="conn-test" data-test-out="${c.id}"></div>`
+      ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>${c.orModel ? `<span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span>` : ""}</div><div class="conn-test" data-test-out="${c.id}"></div>`
       : '<p class="note">Enregistre d’abord ta clé OpenRouter (en haut).</p>';
     return `<div class="conn">
-      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
+      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${c.custom === 'local' ? (s.LOCAL_URL ? `${esc(s.LOCAL_URL)}${s.LOCAL_MODEL ? ` · ${esc(s.LOCAL_MODEL)}` : ''}` : 'Ollama, LM Studio, llama.cpp, Jan…') : mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>
-        <span class="note" style="flex:1;min-width:200px">${mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
-      ${mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
+        <span class="note" style="flex:1;min-width:200px">${c.custom === 'local' ? c.local : mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
+      ${c.custom === 'local' ? localBlock(s) : mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
     </div>`;
   }).join('')}`;
   mFoot.hidden = false;
@@ -2038,6 +2097,7 @@ async function copy(text) { try { await navigator.clipboard.writeText(text); ret
 /* Réglages : enregistrement automatique */
 mBody.addEventListener('change', (e) => {
   const t = e.target;
+  if (t.dataset.wizSkill && wiz.skills) { if (t.checked) wiz.skills.picked.add(t.dataset.wizSkill); else wiz.skills.picked.delete(t.dataset.wizSkill); return renderWizard(); }
   if (t.dataset.k) {
     const v = t.type === 'checkbox' ? String(t.checked) : t.value;
     clearTimeout(saveTimer);
@@ -2100,6 +2160,50 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-clear-key]'))) { await saveSettings({ [el.dataset.clearKey]: '__clear__' }); return renderConnexions(); }
   if ((el = t.closest('[data-conn]'))) {
     try { await connAction(el.dataset.conn, el.dataset.id, el); } catch (err) { toast(err.message, true); }
+    return;
+  }
+  if ((el = t.closest('[data-local-preset]'))) {
+    const v = el.dataset.localPreset;
+    if (!v) { const f = $('[data-local-url]'); f.value = ''; f.focus(); return; }
+    await saveSettings({ LOCAL_URL: v }, true);
+    loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
+    toast('IA locale : adresse enregistrée');
+    return renderConnexions();
+  }
+  if ((el = t.closest('[data-local-save]'))) {
+    const v = $('[data-local-url]').value.trim();
+    if (v && !/^https?:\/\//.test(v)) return toast('L’adresse commence par http:// (ex. http://127.0.0.1:11434/v1).', true);
+    await saveSettings({ LOCAL_URL: v || '__clear__' }, true);
+    loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
+    toast(v ? 'IA locale enregistrée' : 'IA locale désactivée');
+    return renderConnexions();
+  }
+  if ((el = t.closest('[data-local-refresh]'))) { await loadModels(); toast(`${(state.models?.LOCAL_MODEL || []).length} modèle(s) trouvé(s)`); return renderConnexions(); }
+  if ((el = t.closest('[data-local-off]'))) { await saveSettings({ LOCAL_URL: '__clear__', LOCAL_MODEL: '__clear__' }, true); toast('IA locale désactivée'); return renderConnexions(); }
+  if ((el = t.closest('[data-wiz-install-skills]')) && wiz.skills) {
+    const ws = wiz.skills;
+    const todo = [...ws.picked].filter((id) => !ws.installed.has(id));
+    for (const id of todo) {
+      ws.status[id] = 'busy';
+      if (wiz.step === 'skills') renderWizard();
+      try { await api('/api/skills/import/github', { method: 'POST', body: { id } }); ws.status[id] = 'ok'; ws.installed.add(id); }
+      catch (err) { ws.status[id] = err.message; }
+      if (wiz.step === 'skills') renderWizard();
+    }
+    loadSkills();
+    const ok = todo.filter((id) => ws.status[id] === 'ok').length;
+    toast(ok === todo.length ? `${ok} pack${ok > 1 ? 's' : ''} de skills installé${ok > 1 ? 's' : ''}` : `${ok}/${todo.length} packs installés (voir les erreurs)`, ok !== todo.length);
+    return;
+  }
+  if ((el = t.closest('[data-choice-pick], [data-choice-cancel]'))) {
+    const card = el.closest('[data-choice-id]');
+    const always = !!$('[data-choice-always]', card)?.checked;
+    const body = el.dataset.choicePick ? { pick: el.dataset.choicePick, always } : { cancel: true };
+    try {
+      await api(`/api/choice/${card.dataset.choiceId}`, { method: 'POST', body });
+      settleChoice(card, body);
+      if (always) { state.status.settings.BRIDGE_MODE = 'auto'; toast('Claude choisira désormais l’IA lui-même (Réglages → Claude pour changer).'); }
+    } catch (err) { toast(err.message, true); }
     return;
   }
   if ((el = t.closest('[data-perm]'))) {
@@ -2494,14 +2598,16 @@ function modelKey(mode = state.mode) {
   if (mode === 'grok') return s.XAI_AUTH === 'api' ? 'GROK_MODEL' : s.XAI_AUTH === 'openrouter' ? 'OPENROUTER_GROK_MODEL' : 'GROK_ACCOUNT_MODEL';
   if (mode === 'gemini') return s.GEMINI_AUTH === 'api' ? 'GEMINI_MODEL' : s.GEMINI_AUTH === 'openrouter' ? 'OPENROUTER_GEMINI_MODEL' : 'GEMINI_ACCOUNT_MODEL';
   if (mode === 'perplexity') return s.PERPLEXITY_AUTH === 'openrouter' ? 'OPENROUTER_PERPLEXITY_MODEL' : 'PERPLEXITY_MODEL';
+  if (mode === 'local') return 'LOCAL_MODEL';
   return s.CLAUDE_AUTH === 'api' ? 'CLAUDE_MODEL' : s.CLAUDE_AUTH === 'openrouter' ? 'OPENROUTER_CLAUDE_MODEL' : 'CLAUDE_ACCOUNT_MODEL';
 }
-const ALLOWS_DEFAULT = ['CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'GEMINI_ACCOUNT_MODEL', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_GEMINI_MODEL', 'OPENROUTER_PERPLEXITY_MODEL', 'OPENROUTER_IMAGE_MODEL', 'OPENROUTER_GEMINI_IMAGE_MODEL'];
+const ALLOWS_DEFAULT = ['LOCAL_MODEL', 'CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'GEMINI_ACCOUNT_MODEL', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_GEMINI_MODEL', 'OPENROUTER_PERPLEXITY_MODEL', 'OPENROUTER_IMAGE_MODEL', 'OPENROUTER_GEMINI_IMAGE_MODEL'];
 
 function modelLabel(key, value) {
   const list = state.models?.[key] || [];
   if (!value) {
     if (key.startsWith('OPENROUTER_') || key === 'GEMINI_MODEL' || key === 'GEMINI_IMAGE_MODEL') return 'Auto · le plus récent';
+    if (key === 'LOCAL_MODEL') return 'Auto · premier modèle installé';
     const d = list.find((m) => m.isDefault);
     return d ? `${d.label} (défaut)` : 'Par défaut';
   }
@@ -2526,6 +2632,7 @@ const MODE_HINT = {
   grok: 'Conversation directe, autre avis',
   gemini: 'Conversation directe, images Nano Banana',
   perplexity: 'Recherche web avec sources',
+  local: 'Sur ton PC : privé, gratuit, hors ligne',
 };
 function renderModelBtn() {
   const b = $('#modelBtn');
@@ -3147,22 +3254,179 @@ const MCP_EXAMPLE = JSON.stringify({
   },
 }, null, 2);
 
-async function renderMcpTab() {
-  mBody.innerHTML = '<p class="note">Chargement…</p>';
-  let data = { mcpServers: {} };
-  try { data = await api('/api/mcp'); } catch { /* vide */ }
-  const names = Object.keys(data.mcpServers || {});
-  mBody.innerHTML = `<p class="note" style="margin:0 0 12px">Comme dans Claude Code, ajoute des serveurs MCP pour donner de nouveaux outils à Claude quand il code dans un projet (bases de données, navigateur, documentation…). Format identique au fichier <code>.mcp.json</code> de Claude Code. En mode « Demander », chaque appel d’outil MCP te sera soumis.</p>
-    ${names.length ? `<div class="file-list" style="margin-bottom:10px">${names.map((n) => `<span><code>${esc(n)}</code><i>${esc(data.mcpServers[n].url ? 'distant' : 'local')}</i></span>`).join('')}</div>` : ''}
-    <textarea class="textarea mono tall" id="mcpText" spellcheck="false">${esc(JSON.stringify(data, null, 2))}</textarea>
-    <p class="note warn">Un serveur MCP local est un programme qui tourne sur ton PC : n’ajoute que des serveurs de confiance.</p>`;
-  mFoot.hidden = false;
-  mFoot.innerHTML = `<button type="button" class="btn primary" data-save-mcp>${I.check}Enregistrer</button><button type="button" class="btn" data-mcp-example>Insérer un exemple</button><span class="note right">Pris en compte au prochain message.</span>`;
+/* ==========================================================================
+   Serveurs MCP : modèles prêts à l'emploi, formulaire, test, pour toutes les IA
+   ========================================================================== */
+const MCP_PRESETS = [
+  { id: 'roblox', name: 'Roblox_Studio', label: 'Roblox Studio (officiel)', desc: 'L’IA lit et modifie ta place ouverte dans Studio : scripts, instances, test en jeu. Télécharge rbx-studio-mcp.exe et lance-le une fois (il installe le plugin Studio), puis indique son chemin.', link: 'https://github.com/Roblox/studio-rust-mcp-server/releases/latest', cfg: { command: '', args: ['--stdio'] }, need: 'Chemin de rbx-studio-mcp.exe' },
+  { id: 'context7', name: 'context7', label: 'Context7', desc: 'Documentation à jour des bibliothèques et frameworks, directement dans les réponses.', cfg: { url: 'https://mcp.context7.com/mcp' } },
+  { id: 'playwright', name: 'playwright', label: 'Navigateur (Playwright)', desc: 'L’IA pilote un navigateur : ouvrir des pages, cliquer, remplir, faire des captures.', cfg: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] } },
+  { id: 'fichiers', name: 'fichiers', label: 'Fichiers d’un dossier', desc: 'Lire et écrire dans un dossier précis de ton PC.', cfg: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', 'C:\\Users\\toi\\Documents\\mon-dossier'] }, need: 'Remplace le dernier argument par ton dossier' },
+  { id: 'github', name: 'github', label: 'GitHub', desc: 'Dépôts, issues, pull requests (serveur officiel de GitHub). Ajoute ton jeton personnel dans l’en-tête.', cfg: { url: 'https://api.githubcopilot.com/mcp/', headers: { Authorization: 'Bearer ghp_ton_jeton' } }, need: 'Mets ton jeton GitHub dans l’en-tête Authorization' },
+  { id: 'memoire', name: 'memoire', label: 'Mémoire en graphe', desc: 'Une mémoire persistante (entités et relations) que les IA enrichissent.', cfg: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] } },
+  { id: 'reflexion', name: 'sequential-thinking', label: 'Réflexion pas à pas', desc: 'Aide l’IA à découper un problème complexe en étapes.', cfg: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] } },
+];
+const mcpUi = { data: { mcpServers: {} }, form: null, tests: {} };
+
+const splitArgs = (s) => [...String(s || '').matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)].map((m) => m[1] ?? m[2] ?? m[3]);
+const joinArgs = (a) => (a || []).map((x) => (/\s/.test(x) ? `"${x}"` : x)).join(' ');
+const kvLines = (obj, sep) => Object.entries(obj || {}).map(([k, v]) => `${k}${sep}${v}`).join('\n');
+function parseKv(text, sep) {
+  const out = {};
+  for (const line of String(text || '').split('\n')) {
+    const i = line.indexOf(sep);
+    if (i > 0) out[line.slice(0, i).trim()] = line.slice(i + sep.length).trim();
+  }
+  return Object.keys(out).length ? out : undefined;
 }
+
+async function renderMcpTab() {
+  if (settingsTab !== 'mcp') return;
+  try { mcpUi.data = await api('/api/mcp'); } catch { mcpUi.data = { mcpServers: {} }; }
+  drawMcp();
+}
+
+function drawMcp() {
+  const servers = mcpUi.data.mcpServers || {};
+  const names = Object.keys(servers);
+  const f = mcpUi.form;
+  const used = new Set(names.map((n) => n.toLowerCase()));
+  mBody.innerHTML = `
+    <p class="note" style="margin:0 0 14px">Un serveur MCP donne de nouveaux outils aux IA : Roblox Studio, navigateur, documentation, GitHub… <b>Toutes les IA</b> y ont accès : Claude Code, Codex et Gemini CLI s’y connectent eux-mêmes, et Relais les branche pour les IA par OpenRouter, clé API ou IA locale.</p>
+    <div class="group-title">Tes serveurs</div>
+    ${names.length ? `<div class="mcp-list">${names.map((n) => {
+      const s = servers[n];
+      const t = mcpUi.tests[n];
+      return `<div class="mcp-card ${s.disabled ? 'off' : ''}">
+        <div class="mcp-head"><span class="mcp-ico">${s.url ? I.globe : I.server}</span><div class="mcp-name"><b>${esc(n)}</b><code>${esc(s.url || `${s.command} ${joinArgs(s.args)}`)}</code></div>
+          <label class="mcp-sw" title="Activer ou couper ce serveur pour toutes les IA"><input type="checkbox" class="switch" data-mcp-toggle="${esc(n)}" ${s.disabled ? '' : 'checked'}></label></div>
+        <div class="mcp-row">
+          <label class="mcp-trust"><input type="checkbox" data-mcp-trust="${esc(n)}" ${s.autoApprove ? 'checked' : ''}> De confiance : appels sans me demander</label>
+          <span class="right"><button type="button" class="btn sm" data-mcp-test="${esc(n)}">${t === 'busy' ? '<span class="spinner"></span>Test…' : 'Tester'}</button><button type="button" class="btn sm" data-mcp-edit="${esc(n)}">${I.edit}Modifier</button><button type="button" class="btn sm danger" data-mcp-del="${esc(n)}">${I.trash}</button></span>
+        </div>
+        ${t && t !== 'busy' ? (t.ok ? `<div class="mcp-test ok">${I.check}<span><b>Connecté${t.server?.name ? ` à ${esc(t.server.name)}` : ''}</b> · ${t.tools.length} outil${t.tools.length > 1 ? 's' : ''} : ${t.tools.slice(0, 12).map((x) => `<code title="${esc(x.description)}">${esc(x.name)}</code>`).join(' ')}${t.tools.length > 12 ? ' …' : ''}</span></div>` : `<div class="mcp-test err">${I.alert}<span>${esc(t.error)}</span></div>`) : ''}
+      </div>`;
+    }).join('')}</div>` : '<p class="note">Aucun serveur pour l’instant : ajoute un modèle ci-dessous ou ton propre serveur.</p>'}
+    ${f ? mcpForm(f) : `<div class="mcp-add"><button type="button" class="btn" data-mcp-new>${I.plus}Ajouter un serveur</button></div>`}
+    <div class="group-title">Modèles prêts à l’emploi</div>
+    <div class="mcp-presets">${MCP_PRESETS.map((p) => `<button type="button" class="mcp-preset ${used.has(p.name.toLowerCase()) ? 'added' : ''}" data-mcp-preset="${p.id}">
+      <b>${esc(p.label)}${used.has(p.name.toLowerCase()) ? '<em>ajouté</em>' : ''}</b><span>${esc(p.desc)}</span><i>${esc(p.cfg.url ? 'distant' : p.cfg.command === 'npx' ? 'local · npx' : 'local')}</i></button>`).join('')}</div>
+    <details class="mcp-adv"><summary>Mode avancé : modifier le JSON</summary>
+      <textarea class="textarea mono tall" id="mcpText" spellcheck="false">${esc(JSON.stringify(mcpUi.data, null, 2))}</textarea>
+      <div class="conn-actions"><button type="button" class="btn sm primary" data-save-mcp>${I.check}Enregistrer le JSON</button><span class="note">Même format que le fichier .mcp.json de Claude Code, plus « disabled » et « autoApprove ».</span></div>
+    </details>
+    <p class="note warn">Un serveur local est un programme qui tourne sur ton PC : n’ajoute que des serveurs de confiance. Les serveurs « npx » demandent Node.js (déjà présent pour Relais).</p>`;
+  mFoot.hidden = true;
+}
+
+function mcpForm(f) {
+  return `<div class="mcp-form">
+    <div class="mcp-form-head"><b>${f.orig ? `Modifier « ${esc(f.orig)} »` : 'Nouveau serveur'}</b>${f.link ? `<a class="btn sm" href="${esc(f.link)}" target="_blank" rel="noopener noreferrer">${I.ext}Télécharger</a>` : ''}</div>
+    ${f.need ? `<p class="note warn" style="margin:0">${esc(f.need)}</p>` : ''}
+    <div class="conn-fields">
+      <div class="field"><label>Nom</label><input class="input mono" data-mf="name" value="${esc(f.name)}" placeholder="ex. roblox" spellcheck="false"></div>
+      <div class="field"><label>Type</label><div class="seg"><button type="button" data-mf-type="local" class="${f.type === 'local' ? 'on' : ''}">Programme local</button><button type="button" data-mf-type="url" class="${f.type === 'url' ? 'on' : ''}">Serveur distant (URL)</button></div></div>
+    </div>
+    ${f.type === 'local' ? `
+      <div class="conn-fields">
+        <div class="field"><label>Commande</label><input class="input mono" data-mf="command" value="${esc(f.command)}" placeholder="npx, uvx, C:\\…\\serveur.exe" spellcheck="false"></div>
+        <div class="field"><label>Arguments</label><input class="input mono" data-mf="args" value="${esc(f.args)}" placeholder="-y @modelcontextprotocol/server-memory" spellcheck="false"></div>
+      </div>
+      <div class="field"><label>Variables d’environnement <span class="note">(une par ligne : NOM=valeur)</span></label><textarea class="textarea mono" data-mf="env" rows="2" spellcheck="false" placeholder="API_KEY=…">${esc(f.env)}</textarea></div>`
+    : `
+      <div class="field"><label>URL</label><input class="input mono" data-mf="url" value="${esc(f.url)}" placeholder="https://exemple.com/mcp" spellcheck="false"></div>
+      <div class="field"><label>En-têtes <span class="note">(un par ligne : Nom: valeur)</span></label><textarea class="textarea mono" data-mf="headers" rows="2" spellcheck="false" placeholder="Authorization: Bearer …">${esc(f.headers)}</textarea></div>`}
+    <label class="mcp-trust"><input type="checkbox" data-mf-check="autoApprove" ${f.autoApprove ? 'checked' : ''}> De confiance : les IA l’utilisent sans me demander à chaque appel</label>
+    <div class="conn-actions"><button type="button" class="btn sm accent" data-mcp-save-form>${I.check}Enregistrer et tester</button><button type="button" class="btn sm" data-mcp-cancel>Annuler</button></div>
+  </div>`;
+}
+
+function readMcpForm() {
+  const f = mcpUi.form;
+  for (const el of $$('[data-mf]', mBody)) f[el.dataset.mf] = el.value;
+  for (const el of $$('[data-mf-check]', mBody)) f[el.dataset.mfCheck] = el.checked;
+  return f;
+}
+
+async function saveMcpData(next, quietName) {
+  mcpUi.data = await api('/api/mcp', { method: 'PUT', body: { text: JSON.stringify(next) } });
+  drawMcp();
+  if (quietName) testMcp(quietName);
+}
+
+async function testMcp(name) {
+  mcpUi.tests[name] = 'busy';
+  drawMcp();
+  mcpUi.tests[name] = await api('/api/mcp/test', { method: 'POST', body: { name } }).catch((e) => ({ ok: false, error: e.message }));
+  if (settingsTab === 'mcp' && !modal.hidden) drawMcp();
+}
+
+mBody.addEventListener('click', async (e) => {
+  if (settingsTab !== 'mcp' || modal.hidden) return;
+  const t = e.target;
+  let el;
+  const servers = { ...(mcpUi.data.mcpServers || {}) };
+  try {
+    if ((el = t.closest('[data-mcp-new]'))) { mcpUi.form = { type: 'local', name: '', command: '', args: '', env: '', url: '', headers: '', autoApprove: false }; return drawMcp(); }
+    if ((el = t.closest('[data-mcp-cancel]'))) { mcpUi.form = null; return drawMcp(); }
+    if ((el = t.closest('[data-mf-type]'))) { readMcpForm(); mcpUi.form.type = el.dataset.mfType; return drawMcp(); }
+    if ((el = t.closest('[data-mcp-preset]'))) {
+      const p = MCP_PRESETS.find((x) => x.id === el.dataset.mcpPreset);
+      mcpUi.form = { type: p.cfg.url ? 'url' : 'local', name: p.name, command: p.cfg.command || '', args: joinArgs(p.cfg.args), env: '', url: p.cfg.url || '', headers: kvLines(p.cfg.headers, ': '), autoApprove: false, need: p.need, link: p.link };
+      drawMcp();
+      return $('.mcp-form', mBody)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if ((el = t.closest('[data-mcp-edit]'))) {
+      const n = el.dataset.mcpEdit;
+      const s = servers[n];
+      mcpUi.form = { orig: n, type: s.url ? 'url' : 'local', name: n, command: s.command || '', args: joinArgs(s.args), env: kvLines(s.env, '='), url: s.url || '', headers: kvLines(s.headers, ': '), autoApprove: !!s.autoApprove };
+      return drawMcp();
+    }
+    if ((el = t.closest('[data-mcp-save-form]'))) {
+      const f = readMcpForm();
+      const name = f.name.trim();
+      if (!/^[\w.-]{1,40}$/.test(name)) return toast('Nom : lettres, chiffres, tirets (40 caractères max).', true);
+      if (name.toLowerCase() === 'relais') return toast('Le nom « relais » est réservé.', true);
+      if (f.type === 'local' && !f.command.trim()) return toast('Indique la commande à lancer.', true);
+      if (f.type === 'url' && !/^https?:\/\//.test(f.url.trim())) return toast('Indique une URL qui commence par https://', true);
+      const prev = f.orig ? servers[f.orig] || {} : {};
+      if (f.orig && f.orig !== name) delete servers[f.orig];
+      servers[name] = f.type === 'local'
+        ? { command: f.command.trim(), args: splitArgs(f.args), ...(parseKv(f.env, '=') ? { env: parseKv(f.env, '=') } : {}) }
+        : { url: f.url.trim(), ...(parseKv(f.headers, ':') ? { headers: parseKv(f.headers, ':') } : {}) };
+      if (f.autoApprove) servers[name].autoApprove = true;
+      if (prev.disabled) servers[name].disabled = true;
+      mcpUi.form = null;
+      await saveMcpData({ ...mcpUi.data, mcpServers: servers }, name);
+      return toast(`Serveur « ${name} » enregistré`);
+    }
+    if ((el = t.closest('[data-mcp-del]'))) {
+      const n = el.dataset.mcpDel;
+      if (!confirm(`Retirer le serveur « ${n} » ?`)) return;
+      delete servers[n];
+      delete mcpUi.tests[n];
+      return saveMcpData({ ...mcpUi.data, mcpServers: servers });
+    }
+    if ((el = t.closest('[data-mcp-test]'))) return testMcp(el.dataset.mcpTest);
+  } catch (err) { toast(err.message, true); }
+});
+mBody.addEventListener('change', async (e) => {
+  if (settingsTab !== 'mcp' || modal.hidden) return;
+  const t = e.target;
+  const servers = { ...(mcpUi.data.mcpServers || {}) };
+  const n = t.dataset.mcpToggle || t.dataset.mcpTrust;
+  if (!n || !servers[n]) return;
+  const s = { ...servers[n] };
+  if (t.dataset.mcpToggle) { if (t.checked) delete s.disabled; else s.disabled = true; }
+  else if (t.checked) s.autoApprove = true; else delete s.autoApprove;
+  servers[n] = s;
+  try { await saveMcpData({ ...mcpUi.data, mcpServers: servers }); toast(t.dataset.mcpToggle ? (t.checked ? `« ${n} » activé` : `« ${n} » coupé`) : (t.checked ? `« ${n} » : appels sans confirmation` : `« ${n} » : je te demanderai`)); }
+  catch (err) { toast(err.message, true); }
+});
 
 async function saveMcp(btn) {
   btn.disabled = true;
-  try { await api('/api/mcp', { method: 'PUT', body: { text: $('#mcpText').value } }); toast('Serveurs MCP enregistrés'); renderMcpTab(); }
+  try { mcpUi.data = await api('/api/mcp', { method: 'PUT', body: { text: $('#mcpText').value } }); toast('Serveurs MCP enregistrés'); drawMcp(); }
   catch (e) { toast(e.message, true); }
   btn.disabled = false;
 }
@@ -3308,6 +3572,7 @@ const WIZ_STEPS = [
   ['bienvenue', 'Bienvenue'],
   ['ia', 'Connexions'],
   ['travail', 'Préférences'],
+  ['skills', 'Skills'],
   ['voix', 'Voix'],
   ['projet', 'Projet'],
   ['fin', 'C’est prêt'],
@@ -3357,7 +3622,7 @@ function renderWizardFoot() {
       : `${['ia', 'voix', 'projet'].includes(wiz.step) ? '<button type="button" class="btn" data-wiz-next>Plus tard</button>' : ''}<button type="button" class="btn primary" data-wiz-next>Continuer${I.arrow}</button>`}`;
 }
 
-function renderWizard() {
+async function renderWizard() {
   if (!wiz.active) return;
   const s = settings();
   const step = wiz.step;
@@ -3398,6 +3663,8 @@ function renderWizard() {
         ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
         ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
       </div>
+      <div class="group-title">Le pont entre les IA</div>
+      <div class="group">${row('Quand tu ne nommes pas d’IA', 'Ex. « dessine un logo » : Gemini ou ChatGPT ? Relais peut te demander, ou laisser Claude choisir en expliquant pourquoi.', sel('BRIDGE_MODE', [['ask', 'Me demander'], ['auto', 'Claude choisit']], s.BRIDGE_MODE))}</div>
       <div class="group-title">Images</div>
       <div class="group">${row('Moteur par défaut', 'Quand tu demandes un logo, une icône, une illustration…', sel('IMAGE_ENGINE', [['gemini', 'Gemini (Nano Banana)'], ['chatgpt', 'ChatGPT'], ['grok', 'Grok (clé API xAI)']], s.IMAGE_ENGINE))}</div>
       <div class="group-title">Ce que les IA doivent savoir sur toi</div>
@@ -3407,6 +3674,27 @@ function renderWizard() {
         ${row('Me prévenir quand une réponse est prête', 'Quand Relais est en arrière-plan.', `<input type="checkbox" class="switch" data-pref-bool="notify" ${state.prefs.notify ? 'checked' : ''}>`)}
         ${row('Son de fin', '', `<input type="checkbox" class="switch" data-pref-bool="sound" ${state.prefs.sound ? 'checked' : ''}>`)}
       </div>`;
+  }
+
+  if (step === 'skills') {
+    if (!wiz.skills) {
+      mBody.innerHTML = `${progress}<p class="note">Chargement du catalogue…</p>`;
+      try {
+        const r = await api('/api/skills/packs');
+        wiz.skills = { catalog: r.catalog, installed: new Set(r.packs.map((x) => x.id)), picked: new Set(r.catalog.filter((c) => c.starter).map((c) => c.id)), status: {} };
+      } catch (e) { mBody.innerHTML = `${progress}<p class="note">${esc(e.message)}</p>`; return renderWizardFoot(); }
+    }
+    const ws = wiz.skills;
+    const groups = [...new Set(ws.catalog.map((c) => c.category || 'Autres'))];
+    mBody.innerHTML = `${progress}
+      <div class="wiz-hero"><span class="design-ico big">${I.book}</span><div><h3>Des skills pour démarrer</h3><p>Un skill est un mode d’emploi que les IA chargent toutes seules quand il sert. Voici une sélection reconnue sur GitHub ; tout se gère ensuite dans Skills.</p></div></div>
+      ${groups.map((g) => `<div class="group-title">${esc(g)}</div><div class="wiz-skills">${ws.catalog.filter((c) => (c.category || 'Autres') === g).map((c) => {
+        const st = ws.status[c.id];
+        const done = ws.installed.has(c.id) || st === 'ok';
+        return `<label class="wiz-skill ${done ? 'done' : ''}"><input type="checkbox" data-wiz-skill="${esc(c.id)}" ${done ? 'checked disabled' : ws.picked.has(c.id) ? 'checked' : ''}>
+          <span><b>${esc(c.name)}<em>${esc(c.repo)}</em></b><small>${esc(c.blurb)}</small><i>${done ? '✓ Installé' : st === 'busy' ? 'Installation…' : st && st !== 'ok' ? `Erreur : ${esc(st)}` : esc(c.license)}</i></span></label>`;
+      }).join('')}</div>`).join('')}
+      <div class="wiz-skills-act"><button type="button" class="btn accent" data-wiz-install-skills ${[...ws.picked].some((id) => !ws.installed.has(id)) ? '' : 'disabled'}>${I.download}Installer la sélection</button><span class="note">Téléchargé depuis GitHub dans <code>relais/skills/packs</code>.</span></div>`;
   }
 
   if (step === 'voix') {
@@ -3776,7 +4064,7 @@ floatMenu.addEventListener('click', (e) => {
 function openProfileMenu() {
   const btn = $('#profileBtn');
   if (floatMenu._anchor === btn) return closeFloat();
-  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity']];
+  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity'], ['local', 'local']];
   const themeLabel = { auto: 'Auto', light: 'Clair', dark: 'Sombre' }[state.prefs.theme] || 'Auto';
   openFloat(btn, `
     <div class="menu-label">${esc(settings().USER_NAME || 'Relais')}</div>
@@ -3968,7 +4256,7 @@ const HOME_CATS = [
     'Compare les prix et avis actuels de ',
     'Fais une recherche approfondie sur ',
   ] },
-  { id: 'choix', label: 'Au choix de Claude', icon: I.spark, items: [
+  { id: 'choix', label: 'Surprends-moi', icon: I.spark, items: [
     'Raconte-moi une anecdote surprenante sur l’histoire des jeux vidéo',
     'Propose-moi 5 idées de jeux Roblox originales qui pourraient marcher',
     'Pose-moi une énigme et donne-moi des indices si je bloque',
@@ -4041,6 +4329,7 @@ function openToolsPop() {
     ${toolRow('deep', I.telescope, 'Recherche approfondie', { sub: canDeep ? 'Plusieurs recherches Perplexity, puis une synthèse' : 'Demande Claude et Perplexity', on: deep, disabled: !canDeep })}
     ${toolRow('effort', I.brain, 'Réflexion approfondie', { sub: effortAvailable() ? EFFORT_INFO[state.prefs.effort]?.desc : 'Pas disponible avec cette IA', end: effortAvailable() ? EFFORT_INFO[state.prefs.effort]?.label : '', disabled: !effortAvailable() })}
     ${toolRow('style', I.pen, 'Style de réponse', { end: `${(STYLE_INFO[state.prefs.style] || STYLE_INFO.normal).label}${I.chevRight}` })}
+    ${toolRow('bridge', I.relay, 'Me demander quelle IA utiliser', { sub: settings().BRIDGE_MODE === 'auto' ? 'Coupé : Claude choisit et explique pourquoi' : 'Quand tu ne nommes pas d’IA, tu choisis', on: settings().BRIDGE_MODE !== 'auto' })}
     <div class="menu-sep"></div>
     ${state.project ? '' : toolRow('relay', I.relay, 'Relais', { sub: 'Faire travailler une IA précise', end: I.chevRight })}
     ${toolRow('skills', I.book, 'Skills et commandes', { sub: 'Aussi avec « / » dans le champ', end: I.chevRight })}
@@ -4053,7 +4342,12 @@ pop.addEventListener('click', (e) => {
   if (b) {
     const id = b.dataset.tool;
     // Le menu se redessine : on évite que le clic, devenu « extérieur », ne le ferme.
-    if (['web', 'deep', 'effort'].includes(id)) e.stopPropagation();
+    if (['web', 'deep', 'effort', 'bridge'].includes(id)) e.stopPropagation();
+    if (id === 'bridge') {
+      const next = settings().BRIDGE_MODE === 'auto' ? 'ask' : 'auto';
+      saveSettings({ BRIDGE_MODE: next }, true).then(() => { toast(next === 'ask' ? 'Relais te demandera quelle IA utiliser' : 'Claude choisira l’IA lui-même'); state.pop = null; openToolsPop(); });
+      return;
+    }
     if (id === 'web') { toggleWeb(); renderActiveTools(); state.pop = null; return openToolsPop(); }
     if (id === 'deep') { setRelay(state.relay === 'search-deep' ? null : 'search-deep'); state.pop = null; return openToolsPop(); }
     if (id === 'effort') {
@@ -4111,12 +4405,15 @@ function fitPop() {
   pop.style.bottom = '';
   const r = pop.getBoundingClientRect();
   if (r.top >= 60) return;
-  const form = $('#composer');
-  // Accueil centré : pas assez de place au-dessus, le menu s'ouvre sous le champ.
-  if ($('.main').classList.contains('is-home') && innerHeight - form.getBoundingClientRect().bottom > r.height + 16) {
+  const form = $('#composer').getBoundingClientRect();
+  const above = form.top - 66;
+  const below = innerHeight - form.bottom - 16;
+  // Accueil centré : le menu s'ouvre du côté où il y a le plus de place.
+  if ($('.main').classList.contains('is-home') && below > above) {
     pop.style.bottom = 'auto';
-    pop.style.top = `${form.offsetTop + form.offsetHeight + 6}px`;
-  } else pop.style.maxHeight = `${Math.max(160, r.height - (60 - r.top))}px`;
+    pop.style.top = `${$('#composer').offsetTop + $('#composer').offsetHeight + 6}px`;
+    if (r.height > below) pop.style.maxHeight = `${below}px`;
+  } else pop.style.maxHeight = `${Math.max(160, above)}px`;
 }
 new MutationObserver(() => requestAnimationFrame(fitPop)).observe(pop, { attributes: true, attributeFilter: ['hidden'], childList: true });
 

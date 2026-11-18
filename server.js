@@ -9,7 +9,8 @@ import { listDesigns, readDesign, deleteDesign, exportDesign } from './lib/desig
 import { RELAYS, getRelay } from './lib/relays.js';
 import { detectIntent, stripMentions, withEngine } from './public/intent.js';
 import { connectorStatus, install, installJob, startLogin, loginState, submitLoginCode, cancelLogin, logout, invalidateStatus, slim } from './lib/connectors.js';
-import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent } from './lib/orchestrator.js';
+import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent, PERMISSION_TOOL } from './lib/orchestrator.js';
+import { testServer, closeAll as closeMcp } from './lib/mcp-client.js';
 import { PERMS, describeTool } from './lib/coders.js';
 import { listProjects, touchProject, forgetProject, pickFolder, revealFolder, detectType } from './lib/projects.js';
 import crypto from 'node:crypto';
@@ -23,7 +24,7 @@ import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, 
 const PORT = Number(getConfig().PORT) || 4321;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 // IA à qui l'on peut écrire directement (Perplexity : recherche web uniquement, pas de projet)
-const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity'];
+const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity', 'local'];
 // Conversations privées : gardées en mémoire le temps de la session, jamais écrites sur le disque.
 const privateConvs = new Map();
 const findConv = (id) => privateConvs.get(id) || getConversation(id);
@@ -33,7 +34,7 @@ const storeConv = (c) => {
   privateConvs.set(c.id, c);
   if (privateConvs.size > 30) privateConvs.delete(privateConvs.keys().next().value);
 };
-const NAMES = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', gemini: 'Gemini', perplexity: 'Perplexity', cursor: 'Cursor' };
+const NAMES = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', gemini: 'Gemini', perplexity: 'Perplexity', local: 'IA locale', cursor: 'Cursor' };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -101,6 +102,32 @@ function sameOrigin(req) {
 
 /* ---------- Autorisations demandées par Claude Code (mode « Demander ») ---------- */
 const pendingPerms = new Map();
+const pendingChoices = new Map();
+
+/**
+ * Pont entre IA, mode « Me demander » : Relais affiche une carte de choix (ex. Gemini ou ChatGPT pour une image)
+ * et attend la réponse. Sans réponse en 5 minutes, la recommandation de Claude s'applique.
+ */
+function makeChooser(send, signal) {
+  return (q) => new Promise((resolve) => {
+    const id = crypto.randomBytes(8).toString('hex');
+    let done = false;
+    const finish = (r) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      pendingChoices.delete(id);
+      signal?.removeEventListener('abort', onAbort);
+      send('choice_done', { id, pick: r.pick || null, cancel: !!r.cancel });
+      resolve(r);
+    };
+    const onAbort = () => finish({ cancel: true });
+    const timer = setTimeout(() => finish({ pick: q.recommended, timeout: true }), 300000);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    pendingChoices.set(id, { finish, q });
+    send('choice', { id, ...q });
+  });
+}
 const alwaysAllowed = new Map(); // conversation → outils autorisés pour la session
 
 function makeAsker(convId, send, signal) {
@@ -166,7 +193,7 @@ async function handleChat(req, res) {
     const target = relay || hint;
     const engineOk = (e) => (target?.kind === 'image' ? av[IMAGE_AV[e]] : av[e]);
     if (target && ['image', 'ask'].includes(target.kind) && engineOk(target.engine)) { relay = target; direct = true; }
-    else effMode = ['chatgpt', 'gemini', 'grok', 'perplexity'].find((k) => av[k]) || 'claude';
+    else effMode = ['chatgpt', 'gemini', 'grok', 'local', 'perplexity'].find((k) => av[k]) || 'claude';
   }
   // En conversation directe avec ChatGPT, Grok ou Gemini, une demande d'image part chez eux.
   if (!relay && IMAGE_AV[effMode] && av[IMAGE_AV[effMode]] && intent.kind === 'image') {
@@ -201,6 +228,8 @@ async function handleChat(req, res) {
   res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache', connection: 'keep-alive' });
   const send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
   const controller = new AbortController();
+  cfg.askChoice = makeChooser(send, controller.signal);
+  cfg.askPermission = makeAsker(conv.id, send, controller.signal);
   res.on('close', () => { if (!res.writableEnded) controller.abort(); });
 
   send('conversation', { id: conv.id, title: conv.title, project: conv.project, incognito: !!conv.incognito });
@@ -280,7 +309,10 @@ const server = http.createServer(async (req, res) => {
       const { token } = await readBody(req);
       const s = toolSession(token);
       if (!s) return json(res, 403, { error: 'Jeton invalide' });
-      return json(res, 200, { tools: buildTools(s.cfg, { coding: !!s.project }) });
+      const tools = buildTools(s.cfg, { coding: !!s.project });
+      // En discussion aussi, Claude Code demande l'accord de l'utilisateur pour les outils MCP non « de confiance ».
+      if (!tools.some((t) => t.name === 'permission_prompt')) tools.unshift(PERMISSION_TOOL);
+      return json(res, 200, { tools });
     }
     if (p === '/internal/call' && m === 'POST') {
       const { token, name, input } = await readBody(req);
@@ -328,10 +360,10 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { settings: publicSettings(), available: available(getConfig()) });
     }
     if (p === '/api/connectors/slim' && m === 'POST') { const msg = slim(); invalidateStatus(); return json(res, 200, { message: msg }); }
-    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|perplexity)\/(install|logout|test)$/);
+    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|perplexity|local)\/(install|logout|test)$/);
     if (r && m === 'POST') {
       const [, id, action] = r;
-      if (id === 'perplexity' && action !== 'test') return json(res, 400, { error: 'Perplexity n’a pas d’outil à installer.' });
+      if (['perplexity', 'local'].includes(id) && action !== 'test') return json(res, 400, { error: 'Perplexity n’a pas d’outil à installer.' });
       if (action === 'install') return json(res, 200, install(id));
       if (action === 'logout') { await logout(id, getConfig()); return json(res, 200, { ok: true }); }
       try { return json(res, 200, await testConnector(id)); }
@@ -359,9 +391,24 @@ const server = http.createServer(async (req, res) => {
 
     /* Serveurs MCP supplémentaires */
     if (p === '/api/mcp' && m === 'GET') return json(res, 200, readMcp());
+    r = p.match(/^\/api\/mcp\/test$/);
+    if (r && m === 'POST') { const { name } = await readBody(req); return json(res, 200, await testServer(String(name || ''))); }
     if (p === '/api/mcp' && m === 'PUT') {
-      try { return json(res, 200, writeMcp((await readBody(req)).text)); }
+      try { const saved = writeMcp((await readBody(req)).text); closeMcp(); return json(res, 200, saved); }
       catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
+    /* Pont entre IA : réponse à une carte de choix */
+    r = p.match(/^\/api\/choice\/([a-f0-9]{16})$/);
+    if (r && m === 'POST') {
+      const pc = pendingChoices.get(r[1]);
+      if (!pc) return json(res, 404, { error: 'Choix expiré.' });
+      const { pick, always, cancel } = await readBody(req);
+      if (cancel) { pc.finish({ cancel: true }); return json(res, 200, { ok: true }); }
+      if (!pc.q.options.some((o) => o.id === pick)) return json(res, 400, { error: 'Choix inconnu.' });
+      if (always) saveConfig({ BRIDGE_MODE: 'auto' });
+      pc.finish({ pick, always: !!always });
+      return json(res, 200, { ok: true });
     }
 
     /* Autorisations */

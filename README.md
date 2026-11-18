@@ -1,6 +1,6 @@
 # Relais
 
-**Un hub IA local et portable pour Windows : Claude, ChatGPT, Grok, Gemini et Perplexity dans une seule fenêtre, connectés à tes propres comptes.**
+**Un hub IA local et portable pour Windows : Claude, ChatGPT, Grok, Gemini, Perplexity et ton IA locale dans une seule fenêtre, connectés à tes propres comptes.**
 
 Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie la demande à la bonne IA. Gemini pour les images, Perplexity pour les recherches, ChatGPT et Grok pour un autre avis, Claude pour le code. Tout tourne sur ton PC, dans un seul dossier, sans installer les applications de chaque IA.
 
@@ -11,6 +11,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 | Grok | avis différent | clé OpenRouter ou clé API xAI | Grok Build (SuperGrok / X Premium+) |
 | Gemini | images (Nano Banana) et retouches, autre avis, code | clé OpenRouter ou clé API Google (AI Studio) | Gemini CLI (compte Google, Google AI Pro / Ultra) |
 | Perplexity | recherches sur le web, avec les sources | clé OpenRouter ou clé API Perplexity | — (pas d'outil officiel) |
+| IA locale | privé, gratuit, hors ligne | Ollama, LM Studio, llama.cpp, Jan (tout serveur compatible OpenAI) | — |
 | Cursor *(option)* | agent de code | `cursor-agent` | compte Cursor |
 
 > Relais est un projet personnel. Il n'est pas affilié à Anthropic, OpenAI, xAI, Google, Perplexity ni Cursor, et passe uniquement par leurs outils officiels ou leurs API (directement ou via OpenRouter).
@@ -52,11 +53,14 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
   - panneau de travail (`Ctrl J`) : liste de tâches de l'IA, fichiers modifiés avec leur diff, état Git et commit, statistiques de la session
   - réflexion de Claude visible, niveau de réflexion réglable (normal, approfondi, maximum), tokens, tours et coût sous chaque réponse
   - pièces jointes (bouton +, glisser-déposer, coller une capture), file d'attente des messages pendant une réponse, modifier et renvoyer un message, dupliquer une conversation, export Markdown
-  - mémoire du projet (`CLAUDE.md` / `AGENTS.md`) modifiable dans l'app, serveurs MCP supplémentaires pour Claude Code
+  - mémoire du projet (`CLAUDE.md` / `AGENTS.md`) modifiable dans l'app
   - notifications et son de fin quand Relais est en arrière-plan
 - **Recherche web avec Perplexity** : Claude lui confie toute question d'actualité ou vérifiable, et cite les sources. Le bouton « recherche web » passe par Perplexity quand il est connecté. Tu peux aussi écrire directement à Perplexity (sélecteur sous le champ de message).
 - **Images avec Gemini (Nano Banana)** : moteur par défaut, avec repli automatique sur ChatGPT ou Grok. Gemini retouche aussi une image existante : joins-la (ou reprends la dernière générée) et décris la modification.
-- **Le design de l'app Claude Desktop** : tons chauds (ivoire le jour, brun-gris la nuit), salutation et réponses en police serif (réglable : Serif, Sans, Système), accueil centré avec des suggestions (Écrire, Apprendre, Code, Créer une image, Rechercher, Au choix de Claude), champ de message épuré : `+` pour joindre, un seul menu **Outils** (recherche web, recherche approfondie, réflexion, style, relais, skills) dont les options actives s'affichent en pastilles, et un bouton unique pour choisir l'IA et son modèle.
+- **Le pont entre les IA, expliqué** : chaque relais affiche pourquoi telle IA a été choisie. Quand tu ne nommes pas d'IA (« dessine un logo »), Relais te propose de choisir (Gemini, ChatGPT ou Grok pour une image ; ChatGPT, Grok, Gemini ou ton IA locale pour un avis) avec la recommandation de Claude et ses raisons. Ou passe en **automatique** : Claude choisit selon les forces de chacune et l'explique (Réglages → Claude, ou menu Outils).
+- **Serveurs MCP pour toutes les IA** : Réglages → Serveurs MCP. Modèles prêts à l'emploi (**Roblox Studio** officiel, Context7, navigateur Playwright, fichiers, GitHub, mémoire, réflexion pas à pas), formulaire d'ajout, bouton Tester (liste les outils), activer ou couper, et « de confiance » (sinon chaque appel te demande ton accord). Claude Code, Codex et Gemini CLI s'y connectent eux-mêmes ; pour les IA par OpenRouter, clé API ou IA locale, c'est Relais qui se connecte aux serveurs (stdio et HTTP).
+- **IA locale** : branche Ollama, LM Studio, llama.cpp ou Jan (Réglages → Connexions → IA locale). Relais liste les modèles installés ; tu peux lui écrire directement, Claude peut lui demander un avis (`@locale`), et elle code dans tes projets avec l'agent intégré. Les petits modèles qui ne gèrent pas les outils marchent aussi.
+- **Identité Relais** : tons chauds (ivoire le jour, brun-gris la nuit), polices Onest (interface), Bricolage Grotesque (titres) et Newsreader (réponses, réglable), marque « trois IA reliées » sur l'accueil, accueil centré avec des suggestions (Écrire, Apprendre, Code, Créer une image, Rechercher, Surprends-moi), champ de message épuré : `+` pour joindre, un seul menu **Outils** (recherche web, recherche approfondie, réflexion, style, relais, skills) dont les options actives s'affichent en pastilles, et un bouton unique pour choisir l'IA et son modèle.
 - **Les fonctions de Claude Desktop** :
   - barre latérale : Nouvelle conversation, Conversations, Projets, Artefacts, Skills ; **Favoris** puis **Récents** ; ton profil en bas, avec l'état des IA et un menu (réglages, connexions, utilisation, apparence, aide)
   - page **Conversations** : recherche dans les titres et le contenu, favoris, sélection et suppression groupée
@@ -70,7 +74,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 - **Les IA se parlent, en direct** : quand Claude consulte ChatGPT ou Grok, un faisceau animé relie leurs avatars ; la demande part, la réponse revient, et les IA en conversation s'animent dans la barre du haut.
 - **Voix** : dictée au micro (`Ctrl M`), conversation vocale (clic long sur le micro ou `/talk` : Relais envoie à chaque pause et lit la réponse à voix haute), lecture à voix haute de n'importe quelle réponse. Transcription par la reconnaissance vocale de Windows (hors ligne, gratuite), par l'API OpenAI si une clé est enregistrée (plus précise), ou par le navigateur hors de `Relais.exe`.
 - **Actions « Relais »** : image (Gemini, ChatGPT, Grok), retouche d'image, recherche Perplexity simple ou approfondie, icône de jeu, miniature 16:9, table ronde entre IA, script Luau…
-- **Skills** : des fichiers Markdown que Claude charge tout seul quand ils servent, plus l'import de skills depuis ton compte Claude ou depuis GitHub.
+- **Skills** : des fichiers Markdown que Claude charge tout seul quand ils servent, plus l'import de skills depuis ton compte Claude ou depuis GitHub. L'assistant de configuration propose une sélection à installer en un clic : **Caveman** (réponses ultra-courtes, moins de tokens), **Ponytail** (la plus petite modification qui règle le problème), **UI/UX Pro Max** (design d'interfaces) et les skills **Roblox** (Roblox Brain, Awesome GameDev, Roblox Game).
 - **Designs** : des maquettes HTML interactives avec aperçu en direct, des versions successives et l'export vers ton projet.
 - **Premier lancement guidé** : une courte animation (le « R » de Relais se trace, les trois IA s'allument, « Relais » s'écrit en signature), puis un assistant de configuration en six étapes : prénom et apparence, connexion des comptes, préférences de travail, voix, premier projet. Il se relance avec `/setup` ou depuis Réglages → Général.
 - **Application Windows** : une fenêtre WebView2 sans bordure qui reste active dans la zone de notification quand tu la fermes.
@@ -152,6 +156,8 @@ Les variables de `.env.example` :
 | `GROK_MODEL`, `GROK_IMAGE_MODEL` | modèles xAI | `grok-4`, `grok-2-image` |
 | `GEMINI_MODEL`, `GEMINI_IMAGE_MODEL` | modèles Google (clé API) | vide = le plus récent |
 | `PERPLEXITY_MODEL` | modèle Perplexity (`sonar`, `sonar-pro`, `sonar-reasoning-pro`, `sonar-deep-research`) | `sonar-pro` |
+| `LOCAL_URL`, `LOCAL_MODEL`, `LOCAL_KEY` | IA locale : adresse du serveur compatible OpenAI (ex. `http://127.0.0.1:11434/v1` pour Ollama), modèle, clé facultative | vide = désactivée |
+| `BRIDGE_MODE` | quand tu ne nommes pas d'IA : `ask` (Relais te demande) ou `auto` (Claude choisit) | `ask` |
 | `CURSOR_ENABLED`, `CURSOR_WORKSPACE`, `CURSOR_COMMAND`, `CURSOR_ALLOW_WRITES` | agent Cursor | désactivé |
 | `VOICE_ENGINE`, `VOICE_LANG`, `VOICE_OPENAI_MODEL` | dictée : moteur (`auto`, `windows`, `openai`), langue, modèle OpenAI | `auto`, `fr-FR`, `gpt-4o-mini-transcribe` |
 | `PORT` | port du serveur local | `4321` |
@@ -171,6 +177,7 @@ lib/designs.js        maquettes HTML (aperçu, export vers le projet)
 lib/providers.js      appels API directs (dont les images Gemini)
 lib/workspace.js      fichiers du projet, Git, CLAUDE.md, commandes « ! », MCP, pièces jointes
 lib/voice.js          transcription de la voix (Windows ou OpenAI)
+lib/mcp-client.js     client MCP (stdio et HTTP) : outils des serveurs MCP pour toutes les IA
 lib/llm.js            appels directs : OpenRouter et clés API (flux, outils, images, sources Perplexity)
 lib/agent.js          agent de code intégré (sans Claude Code, Codex, Grok Build ni Gemini CLI)
 public/               interface web (public/voice.js : micro et lecture à voix haute)
@@ -192,6 +199,8 @@ Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/
 
 ## Crédits
 
+- Polices : [Onest](https://fonts.google.com/specimen/Onest), [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) et [Newsreader](https://fonts.google.com/specimen/Newsreader) (licence SIL Open Font), servies par Google Fonts.
+- Skills proposés à l'installation : [Caveman](https://github.com/JuliusBrussee/caveman) (Apache-2.0), [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT), [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT), téléchargés depuis GitHub à ta demande.
 - Fenêtre : [Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). Les bibliothèques redistribuables du SDK sont dans `launcher/lib/`.
 - Les skills importés gardent la licence de leur dépôt d'origine.
 - Logos de Claude, ChatGPT (OpenAI), Grok (xAI), Gemini (Google), Perplexity et Cursor : marques de leurs propriétaires respectifs, utilisées uniquement pour identifier chaque service. Tracés issus de [LobeHub Icons](https://github.com/lobehub/lobe-icons) (licence MIT), dans `public/logos.js`.
