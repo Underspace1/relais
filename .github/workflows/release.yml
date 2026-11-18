@@ -1,0 +1,112 @@
+# Compile Relais pour Windows et publie une release GitHub :
+#   - Relais-Setup.exe            installateur (sans droits administrateur)
+#   - Relais-portable-windows.zip version sans installation
+# Se lance quand on pousse une étiquette « v1.2.3 », ou à la main (onglet Actions).
+name: Release Windows
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version à publier (ex. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        run: |
+          $v = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { '${{ inputs.version }}' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "Version : $v"
+
+      - name: Compiler Relais.exe
+        run: |
+          New-Item -ItemType Directory -Force dist/Relais | Out-Null
+          powershell -NoProfile -ExecutionPolicy Bypass -File launcher/build.ps1 -Out "$PWD/dist/Relais/Relais.exe"
+          if (-not (Test-Path dist/Relais/Relais.exe)) { throw 'Relais.exe absent' }
+
+      - name: Node.js portable (LTS, Windows x64)
+        run: |
+          $base = 'https://nodejs.org/dist/latest-v22.x'
+          $sums = (Invoke-WebRequest "$base/SHASUMS256.txt" -UseBasicParsing).Content -split "`n"
+          $line = $sums | Where-Object { $_ -match 'node-v[\d.]+-win-x64\.zip$' } | Select-Object -First 1
+          $hash, $file = ($line -split '\s+')
+          Invoke-WebRequest "$base/$file" -OutFile node.zip -UseBasicParsing
+          if ((Get-FileHash node.zip -Algorithm SHA256).Hash.ToLower() -ne $hash.ToLower()) { throw 'Somme de contrôle Node incorrecte' }
+          Expand-Archive node.zip -DestinationPath node-tmp
+          Move-Item (Get-ChildItem node-tmp -Directory | Select-Object -First 1).FullName dist/Relais/node
+          & dist/Relais/node/node.exe --version
+
+      - name: Assembler les fichiers de Relais
+        run: |
+          $d = 'dist/Relais'
+          Copy-Item server.js, package.json, README.md, demarrer.bat $d
+          foreach ($dir in 'lib', 'public', 'skills') { Copy-Item $dir "$d/$dir" -Recurse }
+          New-Item -ItemType Directory -Force "$d/launcher" | Out-Null
+          Copy-Item launcher/lib "$d/launcher/lib" -Recurse
+          Copy-Item launcher/relais.ico "$d/launcher/"
+          if (Test-Path .env.example) { Copy-Item .env.example $d }
+          # Vérifie que le serveur démarre avec le Node embarqué
+          $p = Start-Process -FilePath "$d/node/node.exe" -ArgumentList 'server.js' -WorkingDirectory $d -PassThru -WindowStyle Hidden
+          $ok = $false
+          for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+            Start-Sleep -Milliseconds 500
+            try { $ok = (Invoke-WebRequest 'http://127.0.0.1:4321/api/skills' -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200 } catch {}
+          }
+          Stop-Process -Id $p.Id -Force
+          if (-not $ok) { throw 'Le serveur Relais ne démarre pas' }
+          # Rien de personnel ni de temporaire dans le paquet
+          foreach ($x in 'data', 'tools') { if (Test-Path "$d/$x") { Remove-Item "$d/$x" -Recurse -Force } }
+          "Serveur OK, paquet prêt."
+
+      - name: Version portable (zip)
+        run: Compress-Archive -Path dist/Relais -DestinationPath dist/Relais-portable-windows.zip
+
+      - name: Installateur (Inno Setup)
+        run: |
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile dist/MicrosoftEdgeWebview2Setup.exe -UseBasicParsing
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress | Out-Null
+            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          & $iscc "/DAppVersion=${{ steps.v.outputs.version }}" launcher/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Échec de la création de l’installateur' }
+          Get-ChildItem dist -File | Format-Table Name, Length
+
+      - name: Publier la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.version }}
+          name: Relais ${{ steps.v.outputs.version }}
+          make_latest: true
+          files: |
+            dist/Relais-Setup.exe
+            dist/Relais-portable-windows.zip
+          body: |
+            ## Installer Relais sur Windows
+
+            1. Télécharge **Relais-Setup.exe** ci-dessous.
+            2. Double-clique dessus. Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même** (l'installateur n'est pas signé).
+            3. Suis l'assistant : Relais s'installe dans ton dossier utilisateur, sans droits administrateur, avec un raccourci dans le menu Démarrer.
+            4. Au premier lancement, l'assistant de configuration t'aide à connecter tes IA. Le plus simple : une clé [OpenRouter](https://openrouter.ai/keys), rien d'autre à installer.
+
+            Tout est inclus (Node.js portable, WebView2 installé si besoin). Windows 10 ou 11, 64 bits.
+
+            **Sans installation :** télécharge `Relais-portable-windows.zip`, décompresse-le où tu veux et lance `Relais.exe`.
+
+            Pour mettre à jour, installe simplement la nouvelle version par-dessus : tes conversations et tes connexions sont conservées.

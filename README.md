@@ -103,13 +103,23 @@ Ici Gemini CLI travaille dans un projet Roblox (Rojo) : liste de tâches, modifi
 - **Application Windows** : une fenêtre WebView2 sans bordure qui reste active dans la zone de notification quand tu la fermes.
 - **Portable** : Node, les outils, les connexions et les données vivent dans le dossier.
 
-## Prérequis
+## Télécharger (le plus simple)
+
+Va dans les [**Releases**](https://github.com/Underspace1/relais/releases/latest) et télécharge **`Relais-Setup.exe`**, puis double-clique dessus. Tout est inclus (Node.js portable, WebView2 si besoin), sans droits administrateur. Windows peut afficher « Windows a protégé votre ordinateur » : clique sur *Informations complémentaires* → *Exécuter quand même* (l'installateur n'est pas signé).
+
+Sans installation : `Relais-portable-windows.zip`, à décompresser, puis lance `Relais.exe`.
+
+Les releases sont compilées automatiquement par GitHub Actions (`.github/workflows/release.yml`) à chaque étiquette `vX.Y.Z`.
+
+## Installer depuis le code source
+
+### Prérequis
 
 - Windows 10 ou 11 (WebView2 est déjà présent sur Windows 11)
 - [Node.js](https://nodejs.org) 18.17 ou plus récent, installé sur le PC **ou** en version portable dans `node/`
 - Un compte ou une clé API pour au moins une des IA
 
-## Installation
+### Installation
 
 ```bash
 git clone https://github.com/Underspace1/relais.git
