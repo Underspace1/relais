@@ -949,3 +949,18 @@ button.sl-item:hover { background: var(--surface-2); color: var(--text-2); }
 @media (max-width: 900px) { .wiz-choices { grid-template-columns: 1fr; } }
 /* Le style global des icônes (trait 1,7) ne doit pas s'appliquer au logo */
 svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-width: 0; }
+
+/* Connexion OpenRouter (rien à installer) */
+.or-card { display: grid; gap: 12px; padding: 16px; margin: 0 0 6px; border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--c-chatgpt) 35%, var(--line)); background: linear-gradient(135deg, color-mix(in srgb, var(--c-claude) 7%, var(--surface)), color-mix(in srgb, var(--c-chatgpt) 7%, var(--surface))); }
+.or-card.on { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
+.or-head { display: flex; gap: 12px; align-items: flex-start; }
+.or-head b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+.or-head > div > span { display: block; font-size: 12.8px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+.or-head > div > span b { display: inline; font-size: inherit; color: var(--text-2); }
+.or-logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--c-claude), var(--c-chatgpt)); color: #fff; flex: none; }
+.or-logo svg { width: 18px; height: 18px; }
+.or-models summary { cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--muted); margin-bottom: 8px; }
+.or-sep { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; font-size: 12px; color: var(--muted); }
+.or-sep::before, .or-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.or-card .pill.right { margin-left: auto; }
+.btn { text-decoration: none; }

@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
 import { transcribe, voiceEngines } from './lib/voice.js';
+import { orKeyInfo } from './lib/llm.js';
 import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
 
 const PORT = Number(getConfig().PORT) || 4321;
@@ -203,8 +204,6 @@ async function handleChat(req, res) {
     } else if (!av.claude && !av.chatgpt && !av.grok) throw new Error('Aucune IA n’est connectée. Ouvre Réglages → Connexions pour connecter ton compte Claude, ChatGPT ou Grok.');
     else if (directRelay) await runRelayDirect({ cfg: inProject ? { ...cfg, PROJECT_DIR: conv.project, imageExport: true } : cfg, relay, text: stripMentions(text), turn, signal: controller.signal });
     else if (inProject) {
-      const auth = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' }[agent];
-      if (cfg[auth] !== 'account') throw new Error(`Pour coder dans un projet, ${agent === 'chatgpt' ? 'ChatGPT' : agent === 'grok' ? 'Grok' : 'Claude'} doit être connecté par ton compte (Réglages → Connexions → Mon compte).`);
       if (!av[agent]) throw new Error(`${agent === 'chatgpt' ? 'ChatGPT (Codex)' : agent === 'grok' ? 'Grok' : 'Claude'} n’est pas connecté. Réglages → Connexions.`);
       await runProject({
         cfg, conv, agent, perm: isCompact ? 'read' : conv.perm || 'ask', effort: isCompact ? 'normal' : effort, forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL,
@@ -292,6 +291,19 @@ const server = http.createServer(async (req, res) => {
       if (m === 'DELETE') { cancelLogin(id); return json(res, 200, { ok: true }); }
       if (m === 'POST' && isCode) { submitLoginCode(id, (await readBody(req)).code || ''); return json(res, 200, loginState(id)); }
       if (m === 'POST') return json(res, 200, startLogin(id, getConfig()));
+    }
+    /* OpenRouter : une seule clé, aucune installation */
+    if (p === '/api/openrouter/key' && m === 'GET') {
+      try { return json(res, 200, await orKeyInfo(getConfig())); } catch (e) { return json(res, 200, { error: e.message }); }
+    }
+    if (p === '/api/openrouter/use' && m === 'POST') {
+      // Bascule les trois IA sur OpenRouter (les autres connexions restent enregistrées)
+      const { agents = ['claude', 'chatgpt', 'grok'] } = await readBody(req);
+      const patch = {};
+      for (const a of agents) patch[{ claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' }[a]] = 'openrouter';
+      saveConfig(patch);
+      invalidateStatus();
+      return json(res, 200, { settings: publicSettings(), available: available(getConfig()) });
     }
     if (p === '/api/connectors/slim' && m === 'POST') { const msg = slim(); invalidateStatus(); return json(res, 200, { message: msg }); }
     r = p.match(/^\/api\/connectors\/(claude|codex|grok)\/(install|logout|test)$/);

@@ -81,7 +81,16 @@ const EFFORT_INFO = {
   high: { label: 'Approfondi', desc: 'Claude réfléchit davantage avant d’agir (« think hard »).' },
   max: { label: 'Maximum', desc: 'Réflexion maximale (« ultrathink ») : pour les problèmes difficiles. Consomme plus.' },
 };
-const CODER_NAME = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build' };
+// Nom de l'agent qui code dans un projet : l'outil officiel (compte) ou l'agent intégré à Relais (OpenRouter, clé API).
+const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build' };
+const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' };
+const CODER_NAME = new Proxy({}, {
+  get: (_, k) => {
+    if (!OFFICIAL_CODER[k]) return undefined;
+    const auth = state?.status?.settings?.[AUTH_OF[k]] || 'account';
+    return auth === 'account' ? OFFICIAL_CODER[k] : AGENTS[k].name;
+  },
+});
 
 const state = {
   convId: null,
@@ -239,6 +248,7 @@ function connState(id) {
   const keyName = { claude: 'anthropic', codex: 'openai', grok: 'xai' }[id];
   if (!state.status) return { label: '—', ok: false };
   if (s[authKey] === 'api') return s.keys?.[keyName] ? { label: 'clé API', ok: true } : { label: 'pas de clé', ok: false };
+  if (s[authKey] === 'openrouter') return s.keys?.openrouter ? { label: 'openrouter', ok: true } : { label: 'pas de clé', ok: false };
   const c = state.connectors?.[id];
   if (!c) return { label: '…', ok: false };
   if (c.installing) return { label: 'installation', ok: false };
@@ -334,7 +344,7 @@ function renderProjectEmpty() {
       <button type="button" class="btn sm" data-reveal="${esc(p.path)}">Ouvrir le dossier</button></div>
     <h2 class="hello">On construit quoi<br><span>dans ${esc(p.name)} ?</span></h2>
     <p class="lede">Choisis l’IA qui code en bas à droite — ${CODER_NAME.claude}, ${CODER_NAME.chatgpt} ou ${CODER_NAME.grok} — et le niveau d’autorisation à gauche. Elle lit, modifie et teste directement les fichiers de ce dossier.</p>
-    ${!a[state.mode] ? `<div class="setup"><span class="avatar" data-agent="${state.mode}">${AGENTS[state.mode].mono}</span><div><b>${CODER_NAME[state.mode]} n’est pas connecté</b><span>Connecte ton compte pour coder dans ce projet.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
+    ${!a[state.mode] ? `<div class="setup"><span class="avatar" data-agent="${state.mode}">${AGENTS[state.mode].mono}</span><div><b>${CODER_NAME[state.mode]} n’est pas connecté</b><span>Connecte ton compte, ou une clé OpenRouter (rien à installer), pour coder dans ce projet.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
     <div class="section-label"><span>Pour commencer</span></div>
     <div class="tiles">${CODE_STARTERS.map((s, i) => `<button type="button" class="tile" data-code-starter="${i}"><b>${esc(s.t)}</b><span>${esc(s.d)}</span></button>`).join('')}</div>
   </div>`));
@@ -1440,18 +1450,24 @@ const CONNECTORS = [
   {
     id: 'claude', agent: 'claude', name: 'Claude', authKey: 'CLAUDE_AUTH', keyK: 'ANTHROPIC_API_KEY', mask: 'anthropic', tool: 'Claude Code',
     account: 'Ton abonnement Claude Pro ou Max, via Claude Code (outil officiel d’Anthropic). Utilise le crédit « Agent SDK » inclus chaque mois.',
-    api: 'Facturé à l’usage sur console.anthropic.com.',
+    api: 'Facturé à l’usage sur console.anthropic.com. Rien à installer : Relais code dans tes projets avec son agent intégré.',
+    or: 'Claude via ta clé OpenRouter. Rien à installer : dans un projet, l’agent intégré de Relais lit, modifie et teste les fichiers.',
+    orModel: 'OPENROUTER_CLAUDE_MODEL',
   },
   {
     id: 'codex', agent: 'chatgpt', name: 'ChatGPT', authKey: 'OPENAI_AUTH', keyK: 'OPENAI_API_KEY', mask: 'openai', tool: 'Codex',
     account: 'Ton abonnement ChatGPT, via Codex (outil officiel d’OpenAI). Les images passent par l’outil de génération inclus, sans clé API.',
-    api: 'Facturé à l’usage sur platform.openai.com.',
+    api: 'Facturé à l’usage sur platform.openai.com. Rien à installer.',
+    or: 'ChatGPT via ta clé OpenRouter, images comprises. Rien à installer.',
+    orModel: 'OPENROUTER_GPT_MODEL',
     accountModel: ['CODEX_MODEL', 'Modèle', 'par défaut'], apiModel: ['OPENAI_MODEL', 'Modèle'],
   },
   {
     id: 'grok', agent: 'grok', name: 'Grok', authKey: 'XAI_AUTH', keyK: 'XAI_API_KEY', mask: 'xai', tool: 'Grok Build',
     account: 'Ton abonnement SuperGrok ou X Premium+, via Grok Build (outil officiel de xAI, en bêta). Texte uniquement : les images Grok demandent une clé API.',
     api: 'Facturé à l’usage sur console.x.ai. Nécessaire pour les images Grok.',
+    or: 'Grok via ta clé OpenRouter. Rien à installer.',
+    orModel: 'OPENROUTER_GROK_MODEL',
     accountModel: ['GROK_ACCOUNT_MODEL', 'Modèle', 'par défaut'], apiModel: ['GROK_MODEL', 'Modèle'], keyAlways: true,
   },
 ];
@@ -1459,6 +1475,7 @@ const CONNECTORS = [
 function connPill(c) {
   const s = settings();
   if (s[c.authKey] === 'api') return s.keys?.[c.mask] ? '<span class="pill ok">Clé enregistrée</span>' : '<span class="pill">Pas de clé</span>';
+  if (s[c.authKey] === 'openrouter') return s.keys?.openrouter ? '<span class="pill ok">OpenRouter</span>' : '<span class="pill">Clé OpenRouter manquante</span>';
   const st = state.connectors?.[c.id];
   if (!st) return '<span class="pill busy">Vérification…</span>';
   if (st.installing || st.job?.running) return '<span class="pill warn busy">Installation…</span>';
@@ -1489,7 +1506,32 @@ function renderConnexions() {
   if (typing && typing.value) return;
   const s = settings();
   const missing = CONNECTORS.filter((c) => (s[c.authKey] || 'account') === 'account' && state.connectors && !state.connectors[c.id]?.installed);
-  mBody.innerHTML = `<div class="setup" style="margin:0 0 16px"><div><b>Tout-en-un, 100 % portable</b><span>Les outils officiels de Claude, ChatGPT et Grok sont installés dans <code>relais/tools</code>, et tes connexions sont gardées dans <code>relais/data/accounts</code>. Aucune application à installer, rien dans ton dossier utilisateur.</span></div>
+  const orKey = s.keys?.openrouter;
+  const allOr = CONNECTORS.every((c) => s[c.authKey] === 'openrouter');
+  const orInfo = state.orInfo;
+  mBody.innerHTML = `
+    <div class="or-card ${allOr && orKey ? 'on' : ''}">
+      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Le plus simple : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT et Grok. <b>Rien à installer</b> : pas de Claude Code, Codex ni Grok Build. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
+      <div class="field"><label>Clé OpenRouter${orKey ? ` <span class="note">(${esc(orKey)})</span>` : ''}</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:220px" type="password" data-key="OPENROUTER_API_KEY" placeholder="${orKey ? 'Nouvelle clé pour remplacer' : 'sk-or-v1-…'}" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn sm" data-save-key="OPENROUTER_API_KEY">Enregistrer</button>
+        ${orKey ? '<button type="button" class="btn sm danger" data-clear-key="OPENROUTER_API_KEY">Retirer</button>' : ''}</div></div>
+      <div class="conn-actions">
+        <a class="btn sm" href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">${I.ext}Créer une clé</a>
+        ${orKey ? `<button type="button" class="btn sm" data-or-check>${I.retry}Vérifier le crédit</button>` : ''}
+        ${orKey && !allOr ? '<button type="button" class="btn sm primary right" data-or-use>Utiliser OpenRouter pour les 3 IA</button>' : ''}
+        ${orKey && allOr ? '<span class="pill ok right">Claude, ChatGPT et Grok passent par OpenRouter</span>' : ''}
+      </div>
+      ${orInfo ? `<p class="note" style="margin:0;${orInfo.error ? 'color:var(--danger)' : ''}">${orInfo.error ? esc(orInfo.error) : `Clé valide${orInfo.label ? ` (${esc(orInfo.label)})` : ''} · ${orInfo.remaining != null ? `crédit restant : ${Number(orInfo.remaining).toFixed(2).replace('.', ',')} $` : `dépensé : ${Number(orInfo.usage || 0).toFixed(2).replace('.', ',')} $`}${orInfo.free ? ' · offre gratuite (modèles limités)' : ''}`}</p>` : ''}
+      ${orKey ? `<details class="or-models"><summary>Modèles utilisés via OpenRouter</summary><div class="conn-fields">
+        <div class="field"><label>Claude</label>${modelField('OPENROUTER_CLAUDE_MODEL', s.OPENROUTER_CLAUDE_MODEL)}</div>
+        <div class="field"><label>ChatGPT</label>${modelField('OPENROUTER_GPT_MODEL', s.OPENROUTER_GPT_MODEL)}</div>
+        <div class="field"><label>Grok</label>${modelField('OPENROUTER_GROK_MODEL', s.OPENROUTER_GROK_MODEL)}</div>
+        <div class="field"><label>Images</label>${modelField('OPENROUTER_IMAGE_MODEL', s.OPENROUTER_IMAGE_MODEL)}</div>
+      </div></details>` : ''}
+    </div>
+    <div class="or-sep"><span>ou, pour utiliser tes abonnements, IA par IA</span></div>
+    <div class="setup" style="margin:0 0 16px"><div><b>Mon compte : tes abonnements Claude, ChatGPT, SuperGrok</b><span>Relais installe les outils officiels dans <code>relais/tools</code> (plusieurs centaines de Mo) et garde tes connexions dans <code>relais/data/accounts</code>. Rien dans ton dossier utilisateur.</span></div>
     ${missing.length ? `<button type="button" class="btn primary" data-install-all>Tout installer</button>` : ''}</div>${CONNECTORS.map((c) => {
     const mode = s[c.authKey] || 'account';
     const st = state.connectors?.[c.id] || {};
@@ -1513,11 +1555,14 @@ function renderConnexions() {
       ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
       ${c.keyAlways ? keyField : ''}`;
     const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}`;
+    const orBlock = orKey
+      ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button><span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span></div><div class="conn-test" data-test-out="${c.id}"></div>`
+      : '<p class="note">Enregistre d’abord ta clé OpenRouter (en haut).</p>';
     return `<div class="conn">
-      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : 'via clé API'}</span></div><span class="right">${connPill(c)}</span></div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg"><button type="button" data-auth="${c.authKey}" data-v="account" class="${mode === 'account' ? 'on' : ''}">Mon compte</button><button type="button" data-auth="${c.authKey}" data-v="api" class="${mode === 'api' ? 'on' : ''}">Clé API</button></div>
-        <span class="note" style="flex:1;min-width:200px">${mode === 'account' ? c.account : c.api}</span></div>
-      ${mode === 'account' ? accountBlock : apiBlock}
+      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg"><button type="button" data-auth="${c.authKey}" data-v="account" class="${mode === 'account' ? 'on' : ''}">Mon compte</button><button type="button" data-auth="${c.authKey}" data-v="openrouter" class="${mode === 'openrouter' ? 'on' : ''}">OpenRouter</button><button type="button" data-auth="${c.authKey}" data-v="api" class="${mode === 'api' ? 'on' : ''}">Clé API</button></div>
+        <span class="note" style="flex:1;min-width:200px">${mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
+      ${mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
     </div>`;
   }).join('')}`;
   mFoot.hidden = false;
@@ -1907,11 +1952,23 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-tab]'))) { settingsTab = el.dataset.tab; renderTab(); if (settingsTab === 'connexions') loadConnectors(true).then(() => settingsTab === 'connexions' && renderConnexions()); return; }
   if ((el = t.closest('[data-pref]'))) { state.prefs[el.dataset.pref] = el.dataset.v; if (el.dataset.pref === 'perm') state.perm = el.dataset.v; savePrefs(); return rerender(); }
   if ((el = t.closest('[data-goto-projects]'))) return openProjects();
-  if ((el = t.closest('[data-auth]'))) { await saveSettings({ [el.dataset.auth]: el.dataset.v }, true); return renderConnexions(); }
+  if ((el = t.closest('[data-auth]'))) { await saveSettings({ [el.dataset.auth]: el.dataset.v }, true); setMode(state.mode); if (el.dataset.v === 'openrouter') loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions()); return renderConnexions(); }
   if ((el = t.closest('[data-save-key]'))) {
     const field = $(`[data-key="${el.dataset.saveKey}"]`);
     if (!field.value.trim()) return toast('Colle d’abord la clé.', true);
     await saveSettings({ [el.dataset.saveKey]: field.value.trim() });
+    if (el.dataset.saveKey === 'OPENROUTER_API_KEY') {
+      state.orInfo = await api('/api/openrouter/key').catch((err) => ({ error: err.message }));
+      // Aucune IA connectée : OpenRouter devient la connexion des trois, tout de suite utilisable.
+      const a = av();
+      if (!state.orInfo.error && !a.claude && !a.chatgpt && !a.grok) {
+        const r = await api('/api/openrouter/use', { method: 'POST', body: {} });
+        state.status = { ...state.status, settings: r.settings, available: r.available };
+        renderConnCard(); renderTopAgents(); setMode(state.mode);
+        toast('OpenRouter activé pour Claude, ChatGPT et Grok');
+      }
+      loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
+    }
     return renderConnexions();
   }
   if ((el = t.closest('[data-clear-key]'))) { await saveSettings({ [el.dataset.clearKey]: '__clear__' }); return renderConnexions(); }
@@ -2000,6 +2057,21 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-test-mic]'))) { closeModal(); return startVoice(); }
   if ((el = t.closest('[data-palette-item]'))) return runPaletteItem(Number(el.dataset.paletteItem));
   if ((el = t.closest('[data-open-setup]'))) return openSetup();
+  if ((el = t.closest('[data-or-check]'))) {
+    el.disabled = true;
+    state.orInfo = await api('/api/openrouter/key').catch((err) => ({ error: err.message }));
+    return renderConnexions();
+  }
+  if ((el = t.closest('[data-or-use]'))) {
+    try {
+      const r = await api('/api/openrouter/use', { method: 'POST', body: {} });
+      state.status = { ...state.status, settings: r.settings, available: r.available };
+      renderConnCard(); renderTopAgents(); renderModelBtn(); setMode(state.mode);
+      toast('Claude, ChatGPT et Grok passent maintenant par OpenRouter');
+      loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
+    } catch (err) { toast(err.message, true); }
+    return renderConnexions();
+  }
   if ((el = t.closest('[data-wiz]'))) return goWizard(el.dataset.wiz);
   if ((el = t.closest('[data-wiz-next]'))) return wizardNext();
   if ((el = t.closest('[data-wiz-back]'))) return wizardBack();
@@ -2273,15 +2345,16 @@ async function loadModels() {
 
 function modelKey(mode = state.mode) {
   const s = settings();
-  if (mode === 'chatgpt') return s.OPENAI_AUTH === 'api' ? 'OPENAI_MODEL' : 'CODEX_MODEL';
-  if (mode === 'grok') return s.XAI_AUTH === 'api' ? 'GROK_MODEL' : 'GROK_ACCOUNT_MODEL';
-  return s.CLAUDE_AUTH === 'api' ? 'CLAUDE_MODEL' : 'CLAUDE_ACCOUNT_MODEL';
+  if (mode === 'chatgpt') return s.OPENAI_AUTH === 'api' ? 'OPENAI_MODEL' : s.OPENAI_AUTH === 'openrouter' ? 'OPENROUTER_GPT_MODEL' : 'CODEX_MODEL';
+  if (mode === 'grok') return s.XAI_AUTH === 'api' ? 'GROK_MODEL' : s.XAI_AUTH === 'openrouter' ? 'OPENROUTER_GROK_MODEL' : 'GROK_ACCOUNT_MODEL';
+  return s.CLAUDE_AUTH === 'api' ? 'CLAUDE_MODEL' : s.CLAUDE_AUTH === 'openrouter' ? 'OPENROUTER_CLAUDE_MODEL' : 'CLAUDE_ACCOUNT_MODEL';
 }
-const ALLOWS_DEFAULT = ['CODEX_MODEL', 'GROK_ACCOUNT_MODEL'];
+const ALLOWS_DEFAULT = ['CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_IMAGE_MODEL'];
 
 function modelLabel(key, value) {
   const list = state.models?.[key] || [];
   if (!value) {
+    if (key.startsWith('OPENROUTER_')) return 'Auto · le plus récent';
     const d = list.find((m) => m.isDefault);
     return d ? `${d.label} (défaut)` : 'Par défaut';
   }
@@ -2313,7 +2386,7 @@ function openModelPop() {
   state.pop = 'model';
   $('#modelBtn').setAttribute('aria-expanded', 'true');
   const cur = settings()[k] || '';
-  const items = [...(ALLOWS_DEFAULT.includes(k) ? [{ id: '', label: modelLabel(k, ''), hint: 'Laisse l’outil choisir' }] : []), ...list];
+  const items = [...(ALLOWS_DEFAULT.includes(k) ? [{ id: '', label: modelLabel(k, ''), hint: k.startsWith('OPENROUTER_') ? 'Relais choisit le modèle le plus récent' : 'Laisse l’outil choisir' }] : []), ...list];
   pop.innerHTML = `<div class="pop-group">Modèle · ${state.project ? CODER_NAME[state.mode] : AGENTS[state.mode].name}</div>
     ${items.length ? `<div class="pop-grid">${items.map((m) => `<button type="button" class="pop-item ${m.id === cur ? 'active' : ''}" data-pick-model="${esc(m.id)}" data-key="${k}"><b>${esc(m.label)}${m.id === cur ? ' ✓' : ''}</b><span>${esc(m.hint || m.id || '')}</span></button>`).join('')}</div>`
       : '<div class="pop-empty">Aucune liste disponible pour l’instant. Tu peux saisir le modèle dans Réglages.</div>'}`;
@@ -3131,7 +3204,7 @@ function renderWizard() {
 
   if (step === 'ia') {
     renderConnexions();
-    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. <b>Mon compte</b> utilise ton abonnement (Claude Pro/Max, ChatGPT, SuperGrok) : clique <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer. <b>Clé API</b> : colle une clé, facturée à l’usage.</p>`);
+    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. Le plus simple : <b>une clé OpenRouter</b>, rien à installer. Pour utiliser tes abonnements (Claude Pro/Max, ChatGPT, SuperGrok), choisis <b>Mon compte</b> : <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer.</p>`);
     return renderWizardFoot();
   }
 

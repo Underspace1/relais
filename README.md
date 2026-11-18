@@ -4,14 +4,14 @@
 
 Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie la demande à la bonne IA. ChatGPT pour les images, Grok pour un autre avis, Claude pour le code. Tout tourne sur ton PC, dans un seul dossier, sans installer les applications de chaque IA.
 
-| IA | Rôle | Outil officiel utilisé | Connexion |
+| IA | Rôle | Sans rien installer | Avec ton abonnement (outil officiel) |
 |---|---|---|---|
-| Claude | chef d'orchestre, écrit le code de ton projet | Claude Code | abonnement Pro/Max ou clé API Anthropic |
-| ChatGPT | images, second avis, relecture | Codex | abonnement ChatGPT ou clé API OpenAI |
-| Grok | avis différent | Grok Build | SuperGrok / X Premium+ ou clé API xAI |
+| Claude | chef d'orchestre, écrit le code de ton projet | clé OpenRouter ou clé API Anthropic | Claude Code (Pro/Max) |
+| ChatGPT | images, second avis, relecture | clé OpenRouter ou clé API OpenAI | Codex (ChatGPT) |
+| Grok | avis différent | clé OpenRouter ou clé API xAI | Grok Build (SuperGrok / X Premium+) |
 | Cursor *(option)* | agent de code | `cursor-agent` | compte Cursor |
 
-> Relais est un projet personnel. Il n'est pas affilié à Anthropic, OpenAI, xAI ni Cursor, et passe uniquement par leurs outils officiels ou leurs API.
+> Relais est un projet personnel. Il n'est pas affilié à Anthropic, OpenAI, xAI ni Cursor, et passe uniquement par leurs outils officiels ou leurs API (directement ou via OpenRouter).
 
 ![Écran d'accueil de Relais](docs/screenshots/accueil.png)
 
@@ -87,15 +87,26 @@ Aucune dépendance npm à installer : le serveur n'utilise que Node.
 - **`demarrer.bat`** : solution de secours qui ouvre l'interface dans ton navigateur, avec une console.
 - **Manuellement** : `npm start`, puis ouvre <http://127.0.0.1:4321>.
 
-## Connecter tes comptes
+## Connecter tes IA
 
-Réglages → **Connexions**, pour chaque IA :
+### Le plus simple : une clé OpenRouter (rien à installer)
+
+1. Crée une clé sur [openrouter.ai/keys](https://openrouter.ai/keys) et ajoute un peu de crédit.
+2. Réglages → **Connexions** → colle la clé dans la carte **OpenRouter** → *Enregistrer*.
+
+C'est tout : Claude, ChatGPT et Grok passent par cette clé, images comprises. Aucun outil n'est téléchargé. Pour coder dans un projet, Relais utilise son **agent de code intégré** (lire, chercher, modifier les fichiers, lancer des commandes), avec les mêmes modes d'autorisation que Claude Code. Relais choisit automatiquement le modèle le plus récent de chaque IA ; tu peux en imposer un dans *Modèles utilisés via OpenRouter*. Facturé à l'usage par OpenRouter.
+
+Tu peux aussi mélanger : chaque IA a son propre mode (*Mon compte*, *OpenRouter* ou *Clé API*).
+
+### Avec tes abonnements (outils officiels)
+
+Réglages → **Connexions**, pour chaque IA, mode **Mon compte** :
 
 1. **Installer** : télécharge l'outil officiel dans `tools/` (Claude Code ≈ 355 Mo, Codex ≈ 490 Mo, Grok Build via le script officiel de xAI).
 2. **Se connecter** : ton navigateur s'ouvre pour te connecter à ton compte.
 3. **Tester** : envoie un message de test.
 
-Chaque IA peut aussi être branchée par **clé API**. Les images Grok passent toujours par une clé API xAI.
+Chaque IA peut aussi être branchée par **clé API** (rien à installer non plus, agent intégré pour les projets). Les images Grok passent par une clé API xAI ou par OpenRouter.
 
 Bon à savoir :
 - Claude Code en mode automatique consomme le crédit « Agent SDK » inclus dans les abonnements Pro et Max (séparé de la limite du chat).
@@ -107,6 +118,8 @@ Les variables de `.env.example` :
 
 | Variable | Rôle | Défaut |
 |---|---|---|
+| `OPENROUTER_API_KEY` | clé OpenRouter (mode OpenRouter, rien à installer) | vide |
+| `OPENROUTER_CLAUDE_MODEL`, `OPENROUTER_GPT_MODEL`, `OPENROUTER_GROK_MODEL`, `OPENROUTER_IMAGE_MODEL` | modèles OpenRouter | vide = le plus récent |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `XAI_API_KEY` | clés API (mode clé API) | vide |
 | `CLAUDE_MODEL` | modèle Claude | `claude-sonnet-5-5` |
 | `OPENAI_MODEL`, `OPENAI_IMAGE_MODEL` | modèles OpenAI | `gpt-5`, `gpt-image-1` |
@@ -130,6 +143,8 @@ lib/designs.js        maquettes HTML (aperçu, export vers le projet)
 lib/providers.js      appels API directs
 lib/workspace.js      fichiers du projet, Git, CLAUDE.md, commandes « ! », MCP, pièces jointes
 lib/voice.js          transcription de la voix (Windows ou OpenAI)
+lib/llm.js            appels directs : OpenRouter et clés API (flux, outils, images)
+lib/agent.js          agent de code intégré (sans Claude Code, Codex ni Grok Build)
 public/               interface web (public/voice.js : micro et lecture à voix haute)
 skills/               skills Relais (Markdown)
 launcher/             lanceur Windows (C# + WebView2) et script de compilation
