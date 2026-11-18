@@ -25,6 +25,8 @@
   --c-claude: #e07a4f;
   --c-chatgpt: #22b083;
   --c-grok: #d6d6db;
+  --c-gemini: #5b8def;
+  --c-perplexity: #22b8c9;
   --c-cursor: #8391ff;
   --c-skill: #e0b341;
 
@@ -48,7 +50,7 @@
   --bg: #fbfbfb; --sidebar: #f4f4f5; --surface: #ffffff; --surface-2: #f4f4f5; --surface-3: #e9e9ec;
   --line: rgba(10, 10, 12, 0.08); --line-strong: rgba(10, 10, 12, 0.15);
   --text: #0c0c0e; --text-2: #3a3a40; --muted: #6e6e76; --primary: #0c0c0e; --primary-ink: #ffffff;
-  --c-grok: #2a2a2e; --c-claude: #d0643a; --c-chatgpt: #13936b; --c-cursor: #5565e8; --c-skill: #b8870f;
+  --c-grok: #2a2a2e; --c-claude: #d0643a; --c-chatgpt: #13936b; --c-gemini: #3f74e0; --c-perplexity: #138a99; --c-cursor: #5565e8; --c-skill: #b8870f;
   --danger: #d4452f; --ok: #1d9a63;
   --shadow-pop: 0 18px 50px -14px rgba(10, 10, 12, 0.28), 0 0 0 1px var(--line);
   --shadow-composer: 0 8px 30px -14px rgba(10, 10, 12, 0.22);
@@ -59,7 +61,7 @@
     --bg: #fbfbfb; --sidebar: #f4f4f5; --surface: #ffffff; --surface-2: #f4f4f5; --surface-3: #e9e9ec;
     --line: rgba(10, 10, 12, 0.08); --line-strong: rgba(10, 10, 12, 0.15);
     --text: #0c0c0e; --text-2: #3a3a40; --muted: #6e6e76; --primary: #0c0c0e; --primary-ink: #ffffff;
-    --c-grok: #2a2a2e; --c-claude: #d0643a; --c-chatgpt: #13936b; --c-cursor: #5565e8; --c-skill: #b8870f;
+    --c-grok: #2a2a2e; --c-claude: #d0643a; --c-chatgpt: #13936b; --c-gemini: #3f74e0; --c-perplexity: #138a99; --c-cursor: #5565e8; --c-skill: #b8870f;
     --danger: #d4452f; --ok: #1d9a63;
     --shadow-pop: 0 18px 50px -14px rgba(10, 10, 12, 0.28), 0 0 0 1px var(--line);
     --shadow-composer: 0 8px 30px -14px rgba(10, 10, 12, 0.22);
@@ -91,6 +93,8 @@ code { font-family: var(--mono); }
 .dot[data-agent='claude'] { background: var(--c-claude); }
 .dot[data-agent='chatgpt'], .dot[data-agent='codex'] { background: var(--c-chatgpt); }
 .dot[data-agent='grok'] { background: var(--c-grok); }
+.dot[data-agent='gemini'] { background: var(--c-gemini); }
+.dot[data-agent='perplexity'] { background: var(--c-perplexity); }
 .dot[data-agent='cursor'] { background: var(--c-cursor); }
 .dot[data-agent='skill'] { background: var(--c-skill); }
 
@@ -98,6 +102,8 @@ code { font-family: var(--mono); }
 .avatar[data-agent='claude'] { background: var(--c-claude); }
 .avatar[data-agent='chatgpt'], .avatar[data-agent='codex'] { background: var(--c-chatgpt); }
 .avatar[data-agent='grok'] { background: var(--c-grok); color: var(--bg); }
+.avatar[data-agent='gemini'] { background: var(--c-gemini); }
+.avatar[data-agent='perplexity'] { background: var(--c-perplexity); }
 .avatar[data-agent='cursor'] { background: var(--c-cursor); }
 .avatar[data-agent='skill'] { background: var(--c-skill); color: #1a1405; }
 
@@ -872,6 +878,11 @@ button.sl-item:hover { background: var(--surface-2); color: var(--text-2); }
   #relayBtn, #skillBtn, #effortBtn { width: 32px; padding: 0; justify-content: center; }
   .model-btn { max-width: 120px; }
 }
+/* Cinq IA dans le sélecteur : sur une fenêtre moyenne, seul le nom de l'IA choisie reste écrit */
+@container (max-width: 780px) {
+  .segmented button:not([aria-checked='true']) span { display: none; }
+  .segmented button:not([aria-checked='true']) { padding: 0 9px; }
+}
 @container (max-width: 660px) {
   .segmented button span, #permBtn span { display: none; }
   .model-btn span { display: none; }
@@ -973,9 +984,13 @@ svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-
 .beam { --cf: var(--c-claude); --ct: var(--muted); position: relative; display: block; width: 46px; height: 2px; margin: 0 3px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--cf) 45%, transparent), color-mix(in srgb, var(--ct) 45%, transparent)); overflow: visible; }
 .beam[data-from='chatgpt'] { --cf: var(--c-chatgpt); }
 .beam[data-from='grok'] { --cf: var(--c-grok); }
+.beam[data-from='gemini'] { --cf: var(--c-gemini); }
+.beam[data-from='perplexity'] { --cf: var(--c-perplexity); }
 .beam[data-to='claude'] { --ct: var(--c-claude); }
 .beam[data-to='chatgpt'], .beam[data-to='codex'] { --ct: var(--c-chatgpt); }
 .beam[data-to='grok'] { --ct: var(--c-grok); }
+.beam[data-to='gemini'] { --ct: var(--c-gemini); }
+.beam[data-to='perplexity'] { --ct: var(--c-perplexity); }
 .beam[data-to='cursor'] { --ct: var(--c-cursor); }
 .beam i, .beam b { position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; opacity: 0; }
 .beam i { left: 0; background: var(--cf); box-shadow: 0 0 8px var(--cf); }
@@ -1002,7 +1017,7 @@ svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-
 .top-agents .avatar { transition: margin .35s cubic-bezier(.2, .8, .2, 1), opacity .3s, transform .3s; }
 .top-agents.linked .avatar { margin-left: 10px; }
 .top-agents.linked::before { content: ''; position: absolute; left: 14px; right: 4px; top: 50%; height: 2px; margin-top: -1px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--c-claude), var(--c-chatgpt), var(--c-grok), var(--c-claude)); background-size: 300% 100%; animation: link-flow 1.4s linear infinite; opacity: .8; }
+  background: linear-gradient(90deg, var(--c-claude), var(--c-chatgpt), var(--c-gemini), var(--c-perplexity), var(--c-grok), var(--c-claude)); background-size: 300% 100%; animation: link-flow 1.4s linear infinite; opacity: .8; }
 .top-agents .avatar.talking { opacity: 1; position: relative; z-index: 1; animation: talk 1.1s ease-in-out infinite; }
 .top-agents .avatar.replied { animation: replied .6s ease-out; }
 @keyframes talk { 0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 transparent; } 50% { transform: translateY(-2px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 14%, transparent); } }

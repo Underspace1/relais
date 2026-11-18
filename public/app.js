@@ -1,5 +1,5 @@
 /* Relais v3 — client */
-import { detectIntent } from './intent.js';
+import { detectIntent, withEngine } from './intent.js';
 import { VoiceInput, voiceSupport, speak, stopSpeaking, listVoices } from './voice.js';
 import { aiLogo } from './logos.js';
 
@@ -13,11 +13,13 @@ const AGENTS = {
   chatgpt: { name: 'ChatGPT', mono: 'Gp' },
   codex: { name: 'ChatGPT', mono: 'Gp' },
   grok: { name: 'Grok', mono: 'Gk' },
+  gemini: { name: 'Gemini', mono: 'Gm' },
+  perplexity: { name: 'Perplexity', mono: 'Px' },
   cursor: { name: 'Cursor', mono: 'Cu' },
   skill: { name: 'Skill', mono: 'Sk' },
   shell: { name: 'Terminal', mono: '>_' },
 };
-// Logos officiels dans les avatars (Claude, ChatGPT, Grok, Cursor)
+// Logos officiels dans les avatars (Claude, ChatGPT, Grok, Gemini, Perplexity, Cursor)
 for (const k of Object.keys(AGENTS)) { const logo = aiLogo(k); if (logo) AGENTS[k].mono = logo; }
 
 const I = {
@@ -73,7 +75,7 @@ const DEFAULT_PREFS = {
 const PERM_INFO = {
   read: { label: 'Lecture seule', icon: '<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.5"/></svg>', desc: 'Les IA lisent et analysent, sans rien modifier.' },
   plan: { label: 'Mode plan', icon: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>', desc: 'L’IA explore le projet et te propose un plan détaillé. Rien n’est modifié avant ton accord.' },
-  ask: { label: 'Demander', icon: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/></svg>', desc: 'Claude te demande avant chaque modification ou commande. Codex et Grok modifient les fichiers du projet, sans commandes risquées.' },
+  ask: { label: 'Demander', icon: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/></svg>', desc: 'Claude te demande avant chaque modification ou commande. Codex, Grok et Gemini modifient les fichiers du projet, sans commandes risquées.' },
   auto: { label: 'Accepter les modifs', icon: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 20h6"/></svg>', desc: 'Les fichiers sont modifiés sans demander ; les commandes restent soumises à ton accord.' },
   full: { label: 'Accès complet', icon: '<svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg>', desc: 'Fichiers et commandes sans confirmation. Pour les projets que tu sauvegardes (Git).' },
 };
@@ -85,8 +87,11 @@ const EFFORT_INFO = {
   max: { label: 'Maximum', desc: 'Réflexion maximale (« ultrathink ») : pour les problèmes difficiles. Consomme plus.' },
 };
 // Nom de l'agent qui code dans un projet : l'outil officiel (compte) ou l'agent intégré à Relais (OpenRouter, clé API).
-const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build' };
-const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' };
+const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build', gemini: 'Gemini CLI' };
+const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH' };
+// IA à qui l'on peut écrire directement. Perplexity cherche sur le web mais ne code pas dans un projet.
+const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity'];
+const CODERS = ['claude', 'chatgpt', 'grok', 'gemini'];
 const CODER_NAME = new Proxy({}, {
   get: (_, k) => {
     if (!OFFICIAL_CODER[k]) return undefined;
@@ -252,8 +257,8 @@ function md(src) {
    ========================================================================== */
 function connState(id) {
   const s = settings();
-  const authKey = { claude: 'CLAUDE_AUTH', codex: 'OPENAI_AUTH', grok: 'XAI_AUTH' }[id];
-  const keyName = { claude: 'anthropic', codex: 'openai', grok: 'xai' }[id];
+  const authKey = { claude: 'CLAUDE_AUTH', codex: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH' }[id];
+  const keyName = { claude: 'anthropic', codex: 'openai', grok: 'xai', gemini: 'gemini', perplexity: 'perplexity' }[id];
   if (!state.status) return { label: '—', ok: false };
   if (s[authKey] === 'api') return s.keys?.[keyName] ? { label: 'clé API', ok: true } : { label: 'pas de clé', ok: false };
   if (s[authKey] === 'openrouter') return s.keys?.openrouter ? { label: 'openrouter', ok: true } : { label: 'pas de clé', ok: false };
@@ -267,7 +272,7 @@ function connState(id) {
 }
 
 function renderConnCard() {
-  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok']];
+  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity']];
   $('#connCard').innerHTML = rows.map(([id, a]) => {
     const st = connState(id);
     return `<div class="conn-row ${st.ok ? '' : 'off'}"><i class="dot" data-agent="${a}"></i>${AGENTS[a].name}<span class="st ${st.ok ? 'ok' : ''}">${st.label}</span></div>`;
@@ -276,7 +281,7 @@ function renderConnCard() {
 
 function renderTopAgents() {
   const a = av();
-  $('#topAgents').innerHTML = ['claude', 'chatgpt', 'grok', ...(a.cursor ? ['cursor'] : [])]
+  $('#topAgents').innerHTML = [...MODES, ...(a.cursor ? ['cursor'] : [])]
     .map((k) => `<span class="avatar ${a[k] ? '' : 'off'}" data-agent="${k}" title="${AGENTS[k].name} : ${a[k] ? 'disponible' : 'non configuré'}">${AGENTS[k].mono}</span>`).join('');
 }
 
@@ -330,7 +335,7 @@ function chainHtml(chain) {
 
 function relayAvailable(r) {
   const a = av();
-  const need = { 'image-grok': a.imageGrok, 'image-chatgpt': a.imageChatgpt, 'roblox-icon': a.imageChatgpt, 'roblox-thumb': a.imageChatgpt, 'image-both': a.claude && a.imageChatgpt && a.imageGrok, 'ask-chatgpt': a.chatgpt, 'ask-grok': a.grok, debate: a.claude && (a.chatgpt || a.grok), 'code-review': a.claude && a.chatgpt, 'code-project': a.claude, 'roblox-script': a.claude };
+  const need = { 'image-grok': a.imageGrok, 'image-chatgpt': a.imageChatgpt, 'image-gemini': a.imageGemini, 'image-edit': a.claude && a.imageGemini, 'roblox-icon': a.imageChatgpt, 'roblox-thumb': a.imageChatgpt, 'image-both': a.claude && a.imageChatgpt && a.imageGrok, 'ask-chatgpt': a.chatgpt, 'ask-grok': a.grok, 'ask-gemini': a.gemini, search: a.perplexity, 'search-deep': a.claude && a.perplexity, debate: a.claude && [a.chatgpt, a.grok, a.gemini].filter(Boolean).length >= 1, 'code-review': a.claude && a.chatgpt, 'code-project': a.claude, 'roblox-script': a.claude };
   return need[r.id] === undefined ? true : !!need[r.id];
 }
 
@@ -367,7 +372,7 @@ function renderEmpty() {
   inner.innerHTML = '';
   inner.append(h(`<div class="empty">
     <h2 class="hello">${hi}.<br><span>Qu’est-ce qu’on crée ?</span></h2>
-    <p class="lede">Écris simplement : Claude comprend quand il faut une image, un autre avis ou du code, et fait travailler la bonne IA. Essaie « dessine un logo pour mon jeu » ou « demande à Grok… ».</p>
+    <p class="lede">Écris simplement : Claude comprend quand il faut une image, un autre avis ou du code, et fait travailler la bonne IA. Essaie « dessine un logo pour mon jeu », « cherche les nouveautés de Roblox Studio » ou « demande à Gemini… ».</p>
     ${state.status && !(a.claude && a.chatgpt && a.grok) ? `<div class="setup"><span class="avatar" data-agent="${!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'}">${AGENTS[!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'].mono}</span><div><b>${!a.claude && !a.chatgpt && !a.grok ? 'Connecte tes comptes' : `Connecte ${!a.claude ? 'Claude' : !a.chatgpt ? 'ChatGPT' : 'Grok'}`}</b><span>Une clé OpenRouter (rien à installer) ou tes abonnements. Tout reste dans le dossier Relais.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
     <div class="section-label"><span>Relais rapides</span></div>
     <div class="tiles">${featured.map((r) => `
@@ -441,7 +446,7 @@ function stepEl(step, wasOpen) {
   const flat = (s) => String(s || '').replace(/\s+/g, ' ');
   const preview = step.status === 'running' ? (flat(step.output).slice(-120) || flat(step.input).slice(0, 120)) : flat(step.input).slice(0, 140);
   const status = step.status === 'running' ? '<span class="spinner"></span>en cours' : step.status === 'error' ? 'erreur' : step.ms ? fmtMs(step.ms) : 'terminé';
-  const isText = ['chatgpt', 'grok', 'skill'].includes(step.agent) && !step.kind;
+  const isText = ['chatgpt', 'grok', 'gemini', 'perplexity', 'skill'].includes(step.agent) && !step.kind;
   const open = wasOpen ?? (state.prefs.stepsOpen || step.status === 'error' || step.agent === 'shell');
   const body = `
     ${step.diff ? diffHtml(step.diff) : ''}
@@ -804,7 +809,7 @@ async function send(text, override) {
     state.msgCount = userIndex + 2;
     state.convMessages.push({ role: 'user', ...userMsg }, { role: 'assistant', agent: view.agent, parts: view.parts, error: meta.error, ms: meta.ms, stats: meta.stats });
     if (meta.stats) state.stats = meta.stats;
-    // En mode plan sans carte « plan » (Codex, Grok), on propose quand même d'exécuter.
+    // En mode plan sans carte « plan » (Codex, Grok, Gemini), on propose quand même d'exécuter.
     if (state.project && state.perm === 'plan' && !meta.error && req.command !== 'shell' && !view.parts.some((p) => p.type === 'plan')) {
       view.partsEl.append(h(`<div class="plan-card compact"><div class="plan-head">${I.plan}<b>Mode plan</b><span class="note">Le plan te convient ?</span></div>
         <div class="perm-actions plan-actions"><button type="button" class="btn sm primary" data-plan-approve="auto">Approuver · accepter les modifs</button>
@@ -940,10 +945,13 @@ const input = $('#input');
 const pop = $('#popover');
 
 function setMode(mode) {
+  // Perplexity ne code pas : dans un projet, on revient à Claude.
+  if (!MODES.includes(mode) || (state.project && !CODERS.includes(mode))) mode = 'claude';
   state.mode = mode;
   $$('#modeSwitch button').forEach((b) => {
     b.setAttribute('aria-checked', String(b.dataset.mode === mode));
-    $('span', b).textContent = state.project ? CODER_NAME[b.dataset.mode] : AGENTS[b.dataset.mode].name;
+    b.hidden = !!state.project && !CODERS.includes(b.dataset.mode);
+    $('span', b).textContent = state.project ? CODER_NAME[b.dataset.mode] || AGENTS[b.dataset.mode].name : AGENTS[b.dataset.mode].name;
   });
   const r = state.relay && relays().find((x) => x.id === state.relay);
   const key = state.prefs.sendKey === 'ctrl' ? 'Ctrl+Entrée pour envoyer' : 'Entrée pour envoyer';
@@ -951,8 +959,8 @@ function setMode(mode) {
     input.placeholder = `Que doit faire ${CODER_NAME[mode]} dans ${state.project.name} ?`;
     $('#hint').textContent = `${key} · / commandes · @ fichiers · ! terminal · Maj+Tab mode`;
   } else {
-    input.placeholder = r ? (r.kind === 'image' ? 'Décris l’image voulue…' : 'Ta demande…') : mode === 'claude' ? 'Demande n’importe quoi : « dessine… », « demande à Grok… », @ChatGPT' : `Écris à ${AGENTS[mode].name}…`;
-    $('#hint').textContent = mode === 'claude' ? `${key} · / commandes · @ IA · Ctrl M dicter` : `Conversation directe avec ${AGENTS[mode].name} · ${key}`;
+    input.placeholder = r ? (r.kind === 'image' ? 'Décris l’image voulue…' : 'Ta demande…') : mode === 'claude' ? 'Demande n’importe quoi : « dessine… », « cherche… », « demande à Gemini… », @ChatGPT' : mode === 'perplexity' ? 'Que veux-tu chercher sur le web ?' : `Écris à ${AGENTS[mode].name}…`;
+    $('#hint').textContent = mode === 'claude' ? `${key} · / commandes · @ IA · Ctrl M dicter` : mode === 'perplexity' ? `Recherche web avec Perplexity, réponses sourcées · ${key}` : `Conversation directe avec ${AGENTS[mode].name} · ${key}`;
   }
   renderProjectUI();
   if (typeof renderModelBtn === 'function' && $('#modelBtn')) renderModelBtn();
@@ -1033,9 +1041,11 @@ function renderChips() {
   if (!r && it?.relay) {
     const target = it.engines[0] ? AGENTS[it.engines[0]].name : 'Claude';
     let label;
-    if (state.mode !== 'claude') label = it.kind === 'image' ? `${AGENTS[state.mode].name} va générer l’image` : '';
+    const names = it.engines.map((e) => AGENTS[e].name).join(' et ').replace(/ et (?=.* et )/g, ', ');
+    if (state.mode !== 'claude') label = it.kind === 'image' && state.mode !== 'perplexity' ? `${AGENTS[state.mode].name} va générer l’image` : '';
     else if (!av().claude && ['image', 'ask'].includes(it.kind)) label = it.kind === 'image' ? `Envoi direct à ${target} pour l’image` : `Envoi direct à ${target}`;
-    else label = { image: `Claude va demander l’image à ${it.engines.map((e) => AGENTS[e].name).join(' et ')}`, ask: `Claude va consulter ${it.engines.map((e) => AGENTS[e].name).join(' et ')}`, code: 'Claude va écrire le code' }[it.kind];
+    else if (it.relay === 'search') label = 'Claude va chercher avec Perplexity';
+    else label = { image: `Claude va demander l’image à ${names}`, 'image-edit': 'Claude va faire retoucher l’image par Gemini', ask: `Claude va consulter ${names}`, code: 'Claude va écrire le code' }[it.kind];
     if (label) html += `<button type="button" class="chip suggest" data-pick-relay="${it.relay}" title="${it.explicit ? 'Demandé avec une @mention' : 'Détecté automatiquement — clique pour le forcer'}">${chainHtml(state.mode !== 'claude' ? [state.mode] : it.chain)}${esc(label)}</button>`;
   }
   chips.innerHTML = html;
@@ -1189,7 +1199,8 @@ input.addEventListener('input', () => {
   else if (mentionQuery() !== null || state.pop === 'mention') openMentionPop();
   clearTimeout(intentTimer);
   intentTimer = setTimeout(() => {
-    const next = detectIntent(input.value);
+    const eng = settings().IMAGE_ENGINE;
+    const next = withEngine(detectIntent(input.value), av()[{ chatgpt: 'imageChatgpt', grok: 'imageGrok', gemini: 'imageGemini' }[eng]] ? eng : 'chatgpt');
     if (next.relay !== state.intent?.relay) { state.intent = next; renderChips(); }
   }, 180);
 });
@@ -1198,6 +1209,8 @@ input.addEventListener('input', () => {
 const MENTIONS = [
   { tag: 'ChatGPT', agent: 'chatgpt', hint: 'Demander à ChatGPT (ou image s’il s’agit d’un visuel)' },
   { tag: 'Grok', agent: 'grok', hint: 'Demander à Grok (ou image Grok)' },
+  { tag: 'Gemini', agent: 'gemini', hint: 'Demander à Gemini (ou image et retouche par Gemini)' },
+  { tag: 'Perplexity', agent: 'perplexity', hint: 'Chercher sur le web, avec les sources' },
   { tag: 'Image', agent: 'chatgpt', hint: 'Générer une image' },
   { tag: 'Design', agent: 'claude', hint: 'Maquette ou prototype interactif (aperçu live)' },
 ];
@@ -1412,13 +1425,14 @@ function renderTab() {
     mBody.innerHTML = `
       <div class="group-title">Génération</div>
       <div class="group">
-        ${row('Moteur par défaut', 'Quand Claude génère une image sans consigne précise.', sel('IMAGE_ENGINE', [['chatgpt', 'ChatGPT'], ['grok', 'Grok']], s.IMAGE_ENGINE))}
+        ${row('Moteur par défaut', 'Quand Claude génère une image sans consigne précise. Les retouches d’une image existante passent toujours par Gemini.', sel('IMAGE_ENGINE', [['gemini', 'Gemini (Nano Banana)'], ['chatgpt', 'ChatGPT'], ['grok', 'Grok']], s.IMAGE_ENGINE))}
         ${row('Format par défaut', '', sel('IMAGE_SIZE', [['1024x1024', 'Carré 1:1'], ['1536x1024', 'Paysage 3:2'], ['1024x1536', 'Portrait 2:3']], s.IMAGE_SIZE))}
       </div>
       <div class="group-title">Modèles (mode clé API)</div>
       <div class="group">
         ${row('Images OpenAI', 'Liste chargée depuis l’API quand une clé OpenAI est enregistrée.', modelField('OPENAI_IMAGE_MODEL', s.OPENAI_IMAGE_MODEL))}
         ${row('Images Grok', 'Toujours via la clé API xAI.', modelField('GROK_IMAGE_MODEL', s.GROK_IMAGE_MODEL))}
+        ${row('Images Gemini', 'Avec la clé API Google. Vide : le modèle Nano Banana le plus récent.', modelField('GEMINI_IMAGE_MODEL', s.GEMINI_IMAGE_MODEL))}
       </div>
       <div class="group-title">Export</div>
       <div class="group">
@@ -1430,7 +1444,7 @@ function renderTab() {
     mBody.innerHTML = `
       <div class="group-title">Coder dans un projet</div>
       <div class="group">
-        ${row('Projets', 'Ouvre un dossier pour que Claude Code, Codex ou Grok y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
+        ${row('Projets', 'Ouvre un dossier pour que Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
         ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
         ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
         ${state.project ? row(`Mémoire de ${esc(state.project.name)}`, 'CLAUDE.md : les consignes que Claude Code relit à chaque session.', '<button type="button" class="btn sm" data-open-memory>Modifier CLAUDE.md</button>') : ''}
@@ -1460,7 +1474,7 @@ function renderTab() {
       <div class="group-title">Emplacements</div>
       <div class="group">
         ${row('Données', 'Conversations, images et réglages sont rangés dans <code>relais/data</code> sur ce PC.', '')}
-        ${row('Outils installés', 'Claude Code, Codex et Grok Build sont dans <code>relais/tools</code>.', '')}
+        ${row('Outils installés', 'Claude Code, Codex, Grok Build et Gemini CLI sont dans <code>relais/tools</code>.', '')}
         ${row('Connexions aux comptes', 'Gardées dans <code>relais/data/accounts</code>. Supprimer ce dossier déconnecte tout.', '')}
       </div>`;
   }
@@ -1491,7 +1505,25 @@ const CONNECTORS = [
     orModel: 'OPENROUTER_GROK_MODEL',
     accountModel: ['GROK_ACCOUNT_MODEL', 'Modèle', 'par défaut'], apiModel: ['GROK_MODEL', 'Modèle'], keyAlways: true,
   },
+  {
+    id: 'gemini', agent: 'gemini', name: 'Gemini', authKey: 'GEMINI_AUTH', keyK: 'GEMINI_API_KEY', mask: 'gemini', tool: 'Gemini CLI',
+    account: 'Ton compte Google (gratuit, Google AI Pro ou Ultra), via Gemini CLI (outil officiel de Google). Texte et code ; pour les images Gemini, ajoute une clé API Google ou OpenRouter.',
+    api: 'Clé gratuite sur aistudio.google.com (quota limité, les images demandent un compte avec facturation). Images Nano Banana et retouches comprises. Rien à installer.',
+    or: 'Gemini via ta clé OpenRouter, images Nano Banana comprises. Rien à installer.',
+    orModel: 'OPENROUTER_GEMINI_MODEL',
+    accountModel: ['GEMINI_ACCOUNT_MODEL', 'Modèle', 'auto'], apiModel: ['GEMINI_MODEL', 'Modèle'], keyAlways: true,
+    keyHint: 'Clé API Google (pour les images)', keyLink: 'https://aistudio.google.com/apikey',
+  },
+  {
+    id: 'perplexity', agent: 'perplexity', name: 'Perplexity', authKey: 'PERPLEXITY_AUTH', keyK: 'PERPLEXITY_API_KEY', mask: 'perplexity', tool: null,
+    modes: ['openrouter', 'api'],
+    api: 'Recherche web avec sources. Clé sur perplexity.ai (Paramètres → API), facturée à l’usage. Claude lui confie les recherches.',
+    or: 'Perplexity via ta clé OpenRouter : recherche web avec sources. Rien à installer.',
+    orModel: 'OPENROUTER_PERPLEXITY_MODEL',
+    apiModel: ['PERPLEXITY_MODEL', 'Modèle'], keyLink: 'https://www.perplexity.ai/account/api/keys',
+  },
 ];
+const CLI_CONNECTORS = CONNECTORS.filter((c) => c.tool);
 
 function connPill(c) {
   const s = settings();
@@ -1512,6 +1544,12 @@ function loginBox(c, lg) {
   const step1 = lg.url
     ? `<a class="btn sm primary" href="${esc(lg.url)}" target="_blank" rel="noopener noreferrer">${c.id === 'claude' ? '1. Ouvrir la page claude.com' : '1. Ouvrir la page de connexion'}</a>`
     : '<span class="note"><span class="spinner"></span> Préparation…</span>';
+  if (c.id === 'gemini') {
+    return `<div class="login-box">
+    <div class="login-row"><b>Connexion à ton compte Google</b><button type="button" class="btn sm right" data-cancel-login="${c.id}">Annuler</button></div>
+    <span class="note">Une page Google s’est ouverte dans ton navigateur : choisis ton compte et accepte. Gemini CLI récupère la connexion tout seul.</span>
+    <span class="note"><span class="spinner"></span> En attente de ta confirmation dans le navigateur…</span></div>`;
+  }
   const step2 = c.id === 'claude'
     ? `<div class="login-row"><input class="input mono" data-login-code="claude" placeholder="2. Colle ici le code donné par la page" autocomplete="off" spellcheck="false"><button type="button" class="btn sm primary" data-send-code="claude">Valider</button></div>`
     : lg.code ? `<div class="login-row"><span class="note">${c.id === 'codex' ? '2. Saisis ce code sur la page :' : '2. Vérifie que la page affiche ce code :'}</span><code class="login-code">${esc(lg.code)}</code><button type="button" class="btn sm" data-copy-text="${esc(lg.code)}">${I.copy}Copier</button></div>` : '';
@@ -1526,13 +1564,13 @@ function renderConnexions() {
   const typing = mBody.querySelector('[data-login-code]:focus, [data-key]:focus');
   if (typing && typing.value) return;
   const s = settings();
-  const missing = CONNECTORS.filter((c) => (s[c.authKey] || 'account') === 'account' && state.connectors && !state.connectors[c.id]?.installed);
+  const missing = CLI_CONNECTORS.filter((c) => (s[c.authKey] || 'account') === 'account' && state.connectors && !state.connectors[c.id]?.installed);
   const orKey = s.keys?.openrouter;
   const allOr = CONNECTORS.every((c) => s[c.authKey] === 'openrouter');
   const orInfo = state.orInfo;
   mBody.innerHTML = `
     <div class="or-card ${allOr && orKey ? 'on' : ''}">
-      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Le plus simple : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT et Grok. <b>Rien à installer</b> : pas de Claude Code, Codex ni Grok Build. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
+      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Le plus simple : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT, Grok, Gemini et Perplexity. <b>Rien à installer</b> : pas de Claude Code, Codex, Grok Build ni Gemini CLI. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
       <div class="field"><label>Clé OpenRouter${orKey ? ` <span class="note">(${esc(orKey)})</span>` : ''}</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:220px" type="password" data-key="OPENROUTER_API_KEY" placeholder="${orKey ? 'Nouvelle clé pour remplacer' : 'sk-or-v1-…'}" autocomplete="off" spellcheck="false">
         <button type="button" class="btn sm" data-save-key="OPENROUTER_API_KEY">Enregistrer</button>
@@ -1540,26 +1578,31 @@ function renderConnexions() {
       <div class="conn-actions">
         <a class="btn sm" href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">${I.ext}Créer une clé</a>
         ${orKey ? `<button type="button" class="btn sm" data-or-check>${I.retry}Vérifier le crédit</button>` : ''}
-        ${orKey && !allOr ? '<button type="button" class="btn sm primary right" data-or-use>Utiliser OpenRouter pour les 3 IA</button>' : ''}
-        ${orKey && allOr ? '<span class="pill ok right">Claude, ChatGPT et Grok passent par OpenRouter</span>' : ''}
+        ${orKey && !allOr ? '<button type="button" class="btn sm primary right" data-or-use>Utiliser OpenRouter pour toutes les IA</button>' : ''}
+        ${orKey && allOr ? '<span class="pill ok right">Toutes les IA passent par OpenRouter</span>' : ''}
       </div>
       ${orInfo ? `<p class="note" style="margin:0;${orInfo.error ? 'color:var(--danger)' : ''}">${orInfo.error ? esc(orInfo.error) : `Clé valide${orInfo.label ? ` (${esc(orInfo.label)})` : ''} · ${orInfo.remaining != null ? `crédit restant : ${Number(orInfo.remaining).toFixed(2).replace('.', ',')} $` : `dépensé : ${Number(orInfo.usage || 0).toFixed(2).replace('.', ',')} $`}${orInfo.free ? ' · offre gratuite (modèles limités)' : ''}`}</p>` : ''}
       ${orKey ? `<details class="or-models"><summary>Modèles utilisés via OpenRouter</summary><div class="conn-fields">
         <div class="field"><label>Claude</label>${modelField('OPENROUTER_CLAUDE_MODEL', s.OPENROUTER_CLAUDE_MODEL)}</div>
         <div class="field"><label>ChatGPT</label>${modelField('OPENROUTER_GPT_MODEL', s.OPENROUTER_GPT_MODEL)}</div>
         <div class="field"><label>Grok</label>${modelField('OPENROUTER_GROK_MODEL', s.OPENROUTER_GROK_MODEL)}</div>
+        <div class="field"><label>Gemini</label>${modelField('OPENROUTER_GEMINI_MODEL', s.OPENROUTER_GEMINI_MODEL)}</div>
+        <div class="field"><label>Perplexity</label>${modelField('OPENROUTER_PERPLEXITY_MODEL', s.OPENROUTER_PERPLEXITY_MODEL)}</div>
         <div class="field"><label>Images</label>${modelField('OPENROUTER_IMAGE_MODEL', s.OPENROUTER_IMAGE_MODEL)}</div>
+        <div class="field"><label>Images Gemini</label>${modelField('OPENROUTER_GEMINI_IMAGE_MODEL', s.OPENROUTER_GEMINI_IMAGE_MODEL)}</div>
       </div></details>` : ''}
     </div>
     <div class="or-sep"><span>ou, pour utiliser tes abonnements, IA par IA</span></div>
-    <div class="setup" style="margin:0 0 16px"><div><b>Mon compte : tes abonnements Claude, ChatGPT, SuperGrok</b><span>Relais installe les outils officiels dans <code>relais/tools</code> (plusieurs centaines de Mo) et garde tes connexions dans <code>relais/data/accounts</code>. Rien dans ton dossier utilisateur.</span></div>
+    <div class="setup" style="margin:0 0 16px"><div><b>Mon compte : tes abonnements Claude, ChatGPT, SuperGrok, Google</b><span>Relais installe les outils officiels dans <code>relais/tools</code> (plusieurs centaines de Mo) et garde tes connexions dans <code>relais/data/accounts</code>. Rien dans ton dossier utilisateur.</span></div>
     ${missing.length ? `<button type="button" class="btn primary" data-install-all>Tout installer</button>` : ''}</div>${CONNECTORS.map((c) => {
-    const mode = s[c.authKey] || 'account';
+    const modes = c.modes || ['account', 'openrouter', 'api'];
+    const mode = modes.includes(s[c.authKey]) ? s[c.authKey] : modes[0];
     const st = state.connectors?.[c.id] || {};
     const job = st.job;
-    const keyField = `<div class="field"><label>Clé API ${c.name}${s.keys?.[c.mask] ? ` <span class="note">(${esc(s.keys[c.mask])})</span>` : ''}</label>
-      <div style="display:flex;gap:6px"><input class="input mono" type="password" data-key="${c.keyK}" placeholder="${s.keys?.[c.mask] ? 'Nouvelle clé pour remplacer' : 'Colle ta clé ici'}" autocomplete="off" spellcheck="false">
-      <button type="button" class="btn sm" data-save-key="${c.keyK}">Enregistrer</button>${s.keys?.[c.mask] ? `<button type="button" class="btn sm danger" data-clear-key="${c.keyK}">Retirer</button>` : ''}</div></div>`;
+    const keyField = `<div class="field"><label>${c.keyHint && mode === 'account' ? c.keyHint : `Clé API ${c.name}`}${s.keys?.[c.mask] ? ` <span class="note">(${esc(s.keys[c.mask])})</span>` : ''}</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:200px" type="password" data-key="${c.keyK}" placeholder="${s.keys?.[c.mask] ? 'Nouvelle clé pour remplacer' : 'Colle ta clé ici'}" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn sm" data-save-key="${c.keyK}">Enregistrer</button>${s.keys?.[c.mask] ? `<button type="button" class="btn sm danger" data-clear-key="${c.keyK}">Retirer</button>` : ''}
+      ${c.keyLink ? `<a class="btn sm" href="${c.keyLink}" target="_blank" rel="noopener noreferrer">${I.ext}Créer une clé</a>` : ''}</div></div>`;
     const accountBlock = `
       <div class="conn-actions">
         ${!st.installed ? `<button type="button" class="btn sm primary" data-conn="install" data-id="${c.id}" ${job?.running ? 'disabled' : ''}>${job?.running ? 'Installation…' : `Installer ${c.tool}`}</button>` : ''}
@@ -1575,13 +1618,14 @@ function renderConnexions() {
       <div class="conn-test" data-test-out="${c.id}"></div>
       ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
       ${c.keyAlways ? keyField : ''}`;
-    const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}`;
+    const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}${!c.tool && s.keys?.[c.mask] ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button></div><div class="conn-test" data-test-out="${c.id}"></div>` : ''}`;
+    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API' };
     const orBlock = orKey
       ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button><span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span></div><div class="conn-test" data-test-out="${c.id}"></div>`
       : '<p class="note">Enregistre d’abord ta clé OpenRouter (en haut).</p>';
     return `<div class="conn">
       <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg"><button type="button" data-auth="${c.authKey}" data-v="account" class="${mode === 'account' ? 'on' : ''}">Mon compte</button><button type="button" data-auth="${c.authKey}" data-v="openrouter" class="${mode === 'openrouter' ? 'on' : ''}">OpenRouter</button><button type="button" data-auth="${c.authKey}" data-v="api" class="${mode === 'api' ? 'on' : ''}">Clé API</button></div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>
         <span class="note" style="flex:1;min-width:200px">${mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
       ${mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
     </div>`;
@@ -1589,7 +1633,7 @@ function renderConnexions() {
   mFoot.hidden = false;
   mFoot.innerHTML = `<span class="note">La connexion se fait depuis Relais, avec une simple confirmation dans ton navigateur.</span><button type="button" class="btn sm right" data-refresh-conn>${I.retry}Actualiser</button>`;
   if (wiz.active) renderWizardFoot();
-  const running = CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running);
+  const running = CLI_CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running);
   if (running) startPolling(1500);
 }
 
@@ -1600,15 +1644,15 @@ function startPolling(ms, duration = 10 * 60 * 1000) {
   if (pollTimer) return;
   pollTimer = setInterval(async () => {
     if (modal.hidden || Date.now() > pollUntil) return stopPolling();
-    const before = Object.fromEntries(CONNECTORS.map((c) => [c.id, state.connectors?.[c.id]?.login?.running]));
+    const before = Object.fromEntries(CLI_CONNECTORS.map((c) => [c.id, state.connectors?.[c.id]?.login?.running]));
     await loadConnectors(true);
     await loadStatus();
-    for (const c of CONNECTORS) {
+    for (const c of CLI_CONNECTORS) {
       const lg = state.connectors?.[c.id]?.login;
       if (before[c.id] && lg && !lg.running) toast(lg.ok ? `Connecté à ${c.name}` : `Connexion ${c.name} interrompue`, !lg.ok);
     }
     if (settingsTab === 'connexions' && (!wiz.active || wiz.step === 'ia')) renderConnexions();
-    const busy = CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running || state.connectors?.[c.id]?.login?.running);
+    const busy = CLI_CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running || state.connectors?.[c.id]?.login?.running);
     if (!busy) stopPolling();
   }, ms);
 }
@@ -1663,7 +1707,7 @@ async function openProjects() {
   mBody.innerHTML = '<p class="note">Chargement…</p>';
   let list = [];
   try { list = await api('/api/projects'); } catch { /* vide */ }
-  mBody.innerHTML = `<p class="note" style="margin:0 0 16px">Ouvre un dossier : Claude Code, Codex ou Grok y travailleront directement (lire, modifier, lancer des commandes), selon le niveau d’autorisation choisi.</p>
+  mBody.innerHTML = `<p class="note" style="margin:0 0 16px">Ouvre un dossier : Claude Code, Codex, Grok Build ou Gemini CLI y travailleront directement (lire, modifier, lancer des commandes), selon le niveau d’autorisation choisi.</p>
     <div class="proj-open">
       <button type="button" class="btn primary" data-pick-folder>${FOLDER_ICON}Choisir un dossier…</button>
       <div class="login-row" style="flex:1"><input class="input mono" id="projPath" placeholder="ou colle un chemin : C:\\Users\\toi\\mon-jeu" spellcheck="false"><button type="button" class="btn" data-open-path>Ouvrir</button></div>
@@ -1983,11 +2027,11 @@ document.addEventListener('click', async (e) => {
       state.orInfo = await api('/api/openrouter/key').catch((err) => ({ error: err.message }));
       // Aucune IA connectée : OpenRouter devient la connexion des trois, tout de suite utilisable.
       const a = av();
-      if (!state.orInfo.error && !a.claude && !a.chatgpt && !a.grok) {
+      if (!state.orInfo.error && !MODES.some((k) => a[k])) {
         const r = await api('/api/openrouter/use', { method: 'POST', body: {} });
         state.status = { ...state.status, settings: r.settings, available: r.available };
         renderConnCard(); renderTopAgents(); setMode(state.mode);
-        toast('OpenRouter activé pour Claude, ChatGPT et Grok');
+        toast('OpenRouter activé pour toutes les IA');
       }
       loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
     }
@@ -2089,7 +2133,7 @@ document.addEventListener('click', async (e) => {
       const r = await api('/api/openrouter/use', { method: 'POST', body: {} });
       state.status = { ...state.status, settings: r.settings, available: r.available };
       renderConnCard(); renderTopAgents(); renderModelBtn(); setMode(state.mode);
-      toast('Claude, ChatGPT et Grok passent maintenant par OpenRouter');
+      toast('Toutes les IA passent maintenant par OpenRouter');
       loadModels().then(() => settingsTab === 'connexions' && !modal.hidden && renderConnexions());
     } catch (err) { toast(err.message, true); }
     return renderConnexions();
@@ -2386,14 +2430,16 @@ function modelKey(mode = state.mode) {
   const s = settings();
   if (mode === 'chatgpt') return s.OPENAI_AUTH === 'api' ? 'OPENAI_MODEL' : s.OPENAI_AUTH === 'openrouter' ? 'OPENROUTER_GPT_MODEL' : 'CODEX_MODEL';
   if (mode === 'grok') return s.XAI_AUTH === 'api' ? 'GROK_MODEL' : s.XAI_AUTH === 'openrouter' ? 'OPENROUTER_GROK_MODEL' : 'GROK_ACCOUNT_MODEL';
+  if (mode === 'gemini') return s.GEMINI_AUTH === 'api' ? 'GEMINI_MODEL' : s.GEMINI_AUTH === 'openrouter' ? 'OPENROUTER_GEMINI_MODEL' : 'GEMINI_ACCOUNT_MODEL';
+  if (mode === 'perplexity') return s.PERPLEXITY_AUTH === 'openrouter' ? 'OPENROUTER_PERPLEXITY_MODEL' : 'PERPLEXITY_MODEL';
   return s.CLAUDE_AUTH === 'api' ? 'CLAUDE_MODEL' : s.CLAUDE_AUTH === 'openrouter' ? 'OPENROUTER_CLAUDE_MODEL' : 'CLAUDE_ACCOUNT_MODEL';
 }
-const ALLOWS_DEFAULT = ['CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_IMAGE_MODEL'];
+const ALLOWS_DEFAULT = ['CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'GEMINI_ACCOUNT_MODEL', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_GEMINI_MODEL', 'OPENROUTER_PERPLEXITY_MODEL', 'OPENROUTER_IMAGE_MODEL', 'OPENROUTER_GEMINI_IMAGE_MODEL'];
 
 function modelLabel(key, value) {
   const list = state.models?.[key] || [];
   if (!value) {
-    if (key.startsWith('OPENROUTER_')) return 'Auto · le plus récent';
+    if (key.startsWith('OPENROUTER_') || key === 'GEMINI_MODEL' || key === 'GEMINI_IMAGE_MODEL') return 'Auto · le plus récent';
     const d = list.find((m) => m.isDefault);
     return d ? `${d.label} (défaut)` : 'Par défaut';
   }
@@ -2436,7 +2482,7 @@ function openModelPop() {
    Utilisation des abonnements (5 h / semaine, par modèle)
    ========================================================================== */
 state.usage = null;
-const USAGE_AGENTS = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok']];
+const USAGE_AGENTS = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini']];
 const WINDOW_LABEL = { five_hour: 'Session (5 h)', seven_day: 'Semaine (7 j)', seven_day_opus: 'Semaine · Opus', seven_day_sonnet: 'Semaine · Sonnet', seven_day_fable: 'Semaine · Fable', overage: 'Dépassement' };
 
 async function loadUsage() {
@@ -2495,13 +2541,13 @@ function openUsagePop() {
   const sections = USAGE_AGENTS.map(([id, ag]) => {
     const p = u[id];
     const models = Object.entries(p.models).sort((a, b) => b[1].share7d - a[1].share7d)
-      .map(([name, m]) => [name === 'défaut' ? modelLabel(id === 'grok' ? 'GROK_ACCOUNT_MODEL' : 'CODEX_MODEL', '') : name, m]);
+      .map(([name, m]) => [name === 'défaut' ? modelLabel({ grok: 'GROK_ACCOUNT_MODEL', gemini: 'GEMINI_ACCOUNT_MODEL' }[id] || 'CODEX_MODEL', '') : name, m]);
     const noLimits = !p.limits?.windows || !Object.keys(p.limits.windows).length;
     return `<section class="u-sec">
       <div class="u-head"><span class="avatar" data-agent="${ag}">${AGENTS[ag].mono}</span><b>${AGENTS[ag].name}</b>
         ${p.limits?.plan ? `<span class="pill">${esc(p.limits.plan)}</span>` : ''}<span class="u-ago">${p.limits?.updatedAt ? `mesuré ${ago(p.limits.updatedAt)}` : ''}</span></div>
       ${noLimits
-        ? `<p class="note">${id === 'grok' ? 'Grok ne communique pas son pourcentage d’utilisation : Relais compte tes requêtes.' : `Pas encore mesuré : le pourcentage apparaît après ton prochain message à ${AGENTS[ag].name}.`}</p>`
+        ? `<p class="note">${id === 'grok' || id === 'gemini' ? `${AGENTS[ag].name} ne communique pas son pourcentage d’utilisation : Relais compte tes requêtes et tes tokens.` : `Pas encore mesuré : le pourcentage apparaît après ton prochain message à ${AGENTS[ag].name}.`}</p>`
         : usageBars(p)}
       ${models.length ? `<div class="u-sub">Par modèle · 7 jours</div>${models.map(([name, m]) => `<div class="u-row"><span class="u-name mono">${esc(name)}</span>
           <span class="u-meter wide model"><i style="width:${Math.max(1, m.share7d)}%"></i></span><span class="u-pct">${m.share7d} %</span>
@@ -2934,7 +2980,7 @@ function showChangeDiff(i) {
   const c = state.changes?.[i];
   if (!c) return;
   showModal(String(c.path).split(/[\\/]/).pop());
-  mBody.innerHTML = `<p class="note mono-note">${esc(c.path)}</p>${c.diffs.length ? c.diffs.map(diffHtml).join('') : '<p class="note">Pas de diff détaillé pour cette modification (Codex et Grok indiquent seulement le fichier). Ouvre l’onglet Git pour le diff complet.</p>'}`;
+  mBody.innerHTML = `<p class="note mono-note">${esc(c.path)}</p>${c.diffs.length ? c.diffs.map(diffHtml).join('') : '<p class="note">Pas de diff détaillé pour cette modification (Codex, Grok et Gemini indiquent parfois seulement le fichier). Ouvre l’onglet Git pour le diff complet.</p>'}`;
 }
 
 /* ---------- Git ---------- */
@@ -3233,7 +3279,7 @@ function renderWizard() {
 
   if (step === 'bienvenue') {
     mBody.innerHTML = `${progress}
-      <div class="wiz-hero">${LOGO_SVG}<div><h3>Bienvenue dans Relais</h3><p>Claude, ChatGPT et Grok dans une seule fenêtre, avec tes propres comptes. Quelques réglages et on démarre : deux minutes, tout se change ensuite dans Réglages.</p></div></div>
+      <div class="wiz-hero">${LOGO_SVG}<div><h3>Bienvenue dans Relais</h3><p>Claude, ChatGPT, Grok, Gemini et Perplexity dans une seule fenêtre, avec tes propres comptes. Quelques réglages et on démarre : deux minutes, tout se change ensuite dans Réglages.</p></div></div>
       <div class="group">
         ${row('Ton prénom', 'Pour que les IA s’adressent à toi.', inp('USER_NAME', s.USER_NAME, 'Ton prénom', false))}
         ${row('Langue des réponses', '', sel('RESPONSE_LANGUAGE', [['auto', 'Comme mon message'], ['fr', 'Français'], ['en', 'Anglais']], s.RESPONSE_LANGUAGE))}
@@ -3244,7 +3290,7 @@ function renderWizard() {
 
   if (step === 'ia') {
     renderConnexions();
-    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. Le plus simple : <b>une clé OpenRouter</b>, rien à installer. Pour utiliser tes abonnements (Claude Pro/Max, ChatGPT, SuperGrok), choisis <b>Mon compte</b> : <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer.</p>`);
+    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. Le plus simple : <b>une clé OpenRouter</b>, rien à installer. Pour utiliser tes abonnements (Claude Pro/Max, ChatGPT, SuperGrok, compte Google pour Gemini), choisis <b>Mon compte</b> : <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer.</p>`);
     return renderWizardFoot();
   }
 
@@ -3257,6 +3303,7 @@ function renderWizard() {
         ${choice('claude', 'Claude', 'Recommandé. Le chef d’orchestre : il répond et fait travailler les autres IA quand il faut.')}
         ${choice('chatgpt', 'ChatGPT', 'Conversation directe avec ChatGPT (et Codex dans un projet).')}
         ${choice('grok', 'Grok', 'Conversation directe avec Grok (et Grok Build dans un projet).')}
+        ${choice('gemini', 'Gemini', 'Conversation directe avec Gemini (et Gemini CLI dans un projet).')}
       </div>
       <div class="group-title">Quand une IA travaille dans ton projet</div>
       <div class="group">
@@ -3264,7 +3311,7 @@ function renderWizard() {
         ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
       </div>
       <div class="group-title">Images</div>
-      <div class="group">${row('Moteur par défaut', 'Quand tu demandes un logo, une icône, une illustration…', sel('IMAGE_ENGINE', [['chatgpt', 'ChatGPT'], ['grok', 'Grok (clé API xAI)']], s.IMAGE_ENGINE))}</div>
+      <div class="group">${row('Moteur par défaut', 'Quand tu demandes un logo, une icône, une illustration…', sel('IMAGE_ENGINE', [['gemini', 'Gemini (Nano Banana)'], ['chatgpt', 'ChatGPT'], ['grok', 'Grok (clé API xAI)']], s.IMAGE_ENGINE))}</div>
       <div class="group-title">Ce que les IA doivent savoir sur toi</div>
       <div class="group"><div class="row stack"><textarea class="textarea" data-k="CUSTOM_INSTRUCTIONS" placeholder="Ex. « Je crée un jeu Roblox d’obby, je débute en Luau, explique simplement. »">${esc(s.CUSTOM_INSTRUCTIONS)}</textarea></div></div>
       <div class="group-title">Notifications</div>
@@ -3292,7 +3339,7 @@ function renderWizard() {
   if (step === 'projet') {
     const pj = wiz.project;
     mBody.innerHTML = `${progress}
-      <div class="wiz-hero"><span class="design-ico big">${FOLDER_ICON}</span><div><h3>Un projet sur lequel travailler ?</h3><p>Choisis le dossier de ton jeu ou de ton site : Claude Code, Codex ou Grok Build y liront et modifieront les fichiers, selon l’autorisation choisie. Tu peux aussi rester en discussion libre.</p></div></div>
+      <div class="wiz-hero"><span class="design-ico big">${FOLDER_ICON}</span><div><h3>Un projet sur lequel travailler ?</h3><p>Choisis le dossier de ton jeu ou de ton site : Claude Code, Codex, Grok Build ou Gemini CLI y liront et modifieront les fichiers, selon l’autorisation choisie. Tu peux aussi rester en discussion libre.</p></div></div>
       ${pj ? `<div class="proj-card">${FOLDER_ICON}<div><b>${esc(pj.name)}</b><span>${esc(pj.path)}</span></div><span class="pill ok">${esc(pj.type || 'Dossier')}</span></div>` : ''}
       <div class="proj-open">
         <button type="button" class="btn ${pj ? '' : 'primary'}" data-wiz-pick>${FOLDER_ICON}${pj ? 'Choisir un autre dossier…' : 'Choisir un dossier…'}</button>
@@ -3304,13 +3351,15 @@ function renderWizard() {
   if (step === 'fin') {
     const a = av();
     const line = (ok, label, hint) => `<div><span class="${ok ? 'ok' : 'no'}">${ok ? I.check : I.x}</span>${label}<em>${esc(hint)}</em></div>`;
-    const connected = ['claude', 'chatgpt', 'grok'].filter((k) => a[k]);
+    const connected = MODES.filter((k) => a[k]);
     mBody.innerHTML = `${progress}
       <div class="wiz-hero">${LOGO_SVG}<div><h3>${s.USER_NAME ? `C’est prêt, ${esc(s.USER_NAME)} !` : 'C’est prêt !'}</h3><p>Écris simplement ce que tu veux : Claude comprend quand il faut une image, un autre avis ou du code.</p></div></div>
       <div class="wiz-recap">
         ${line(a.claude, 'Claude', a.claude ? 'connecté' : 'à connecter')}
         ${line(a.chatgpt, 'ChatGPT', a.chatgpt ? 'connecté' : 'à connecter')}
         ${line(a.grok, 'Grok', a.grok ? 'connecté' : 'à connecter')}
+        ${line(a.gemini, 'Gemini', a.gemini ? `connecté${a.imageGemini ? ', images comprises' : ''}` : 'à connecter')}
+        ${line(a.perplexity, 'Perplexity', a.perplexity ? 'connecté (recherches)' : 'à connecter')}
         ${line(true, 'Mode dans les projets', PERM_INFO[state.prefs.perm]?.label || 'Demander')}
         ${line(!!wiz.project, 'Projet', wiz.project ? wiz.project.name : 'discussion libre')}
       </div>
@@ -3468,7 +3517,7 @@ function openRetryPop(btn) {
   const item = (k, label, hint, on = true) => `<button type="button" class="pop-item perm-item ${on ? '' : 'disabled'}" ${on ? `data-retry-with="${k}" data-index="${index}"` : ''}><b>${k === 'same' ? I.retry : `<i class="dot" data-agent="${k}"></i>`}${label}</b><span>${esc(hint)}</span></button>`;
   pop.innerHTML = `<div class="pop-group">Relancer la dernière demande</div>
     ${item('same', 'Relancer', 'Même IA, même demande')}
-    ${['claude', 'chatgpt', 'grok'].map((k) => item(k, `Avec ${state.project ? CODER_NAME[k] : AGENTS[k].name}`, a[k] ? 'Comparer avec une autre IA' : 'Non connecté', !!a[k])).join('')}`;
+    ${(state.project ? CODERS : MODES).map((k) => item(k, `Avec ${state.project ? CODER_NAME[k] : AGENTS[k].name}`, a[k] ? 'Comparer avec une autre IA' : 'Non connecté', !!a[k])).join('')}`;
   pop.hidden = false;
 }
 
@@ -3581,7 +3630,7 @@ async function saveUserMemory(btn) {
 (async function init() {
   document.documentElement.dataset.width = state.prefs.width;
   $('#app').classList.toggle('side-hidden', !state.prefs.sidebar);
-  setMode(['claude', 'chatgpt', 'grok'].includes(state.prefs.defaultAgent) ? state.prefs.defaultAgent : 'claude');
+  setMode(MODES.includes(state.prefs.defaultAgent) ? state.prefs.defaultAgent : 'claude');
   updateSendBtn();
   await Promise.all([loadStatus(), loadSkills(), loadConvs()]);
   renderEmpty();

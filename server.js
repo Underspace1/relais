@@ -7,7 +7,7 @@ import { listSkills, getSkill, saveSkill, deleteSkill, listPacks, setSkillEnable
 import { CATALOG, importClaudeSkills, importGithub, removePack } from './lib/skill-import.js';
 import { listDesigns, readDesign, deleteDesign, exportDesign } from './lib/designs.js';
 import { RELAYS, getRelay } from './lib/relays.js';
-import { detectIntent, stripMentions } from './public/intent.js';
+import { detectIntent, stripMentions, withEngine } from './public/intent.js';
 import { connectorStatus, install, installJob, startLogin, loginState, submitLoginCode, cancelLogin, logout, invalidateStatus, slim } from './lib/connectors.js';
 import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent } from './lib/orchestrator.js';
 import { PERMS, describeTool } from './lib/coders.js';
@@ -16,12 +16,15 @@ import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
 import { transcribe, voiceEngines } from './lib/voice.js';
-import { orKeyInfo } from './lib/llm.js';
+import { orKeyInfo, AUTH_KEY } from './lib/llm.js';
 import { readMemory as readUserMemory, writeMemory as writeUserMemory } from './lib/memory.js';
 import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
 
 const PORT = Number(getConfig().PORT) || 4321;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+// IA à qui l'on peut écrire directement (Perplexity : recherche web uniquement, pas de projet)
+const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity'];
+const NAMES = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', gemini: 'Gemini', perplexity: 'Perplexity', cursor: 'Cursor' };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -126,7 +129,7 @@ async function handleChat(req, res) {
   const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command, style, web } = await readBody(req);
   if (!String(text || '').trim()) return json(res, 400, { error: 'Message vide' });
   const attachments = (Array.isArray(attIds) ? attIds : []).slice(0, 12).map(getUpload).filter(Boolean);
-  if (!['claude', 'chatgpt', 'grok'].includes(mode)) return json(res, 400, { error: 'Mode inconnu' });
+  if (!MODES.includes(mode)) return json(res, 400, { error: 'Mode inconnu' });
 
   const cfg = getConfig();
   // Réglages de ce message : style de réponse, recherche web, réflexion
@@ -135,26 +138,28 @@ async function handleChat(req, res) {
   cfg.effort = effort;
   await connectorStatus(cfg);
   const av = available(cfg);
+  // Recherche web : avec Perplexity connecté, c'est lui qui cherche (à la place du plugin web d'OpenRouter).
+  cfg.perplexitySearch = cfg.webSearch && av.perplexity;
   const isShell = command === 'shell';
   const isCompact = command === 'compact';
   const msgText = isCompact ? `${COMPACT_PROMPT}${String(text).replace(/^\/compact\s*/, '').trim() ? `\nPoints à garder en priorité : ${String(text).replace(/^\/compact\s*/, '').trim()}` : ''}` : String(text);
-  const intent = isShell || isCompact ? { relay: null } : detectIntent(text);
+  const intent = isShell || isCompact ? { relay: null } : withEngine(detectIntent(text), av[{ chatgpt: 'imageChatgpt', grok: 'imageGrok', gemini: 'imageGemini' }[cfg.IMAGE_ENGINE]] ? cfg.IMAGE_ENGINE : 'chatgpt');
   // Une @mention (« @grok une image de… ») vaut un relais explicite ; sinon c'est un simple indice pour Claude.
   let relay = relayId ? getRelay(relayId) : intent.explicit ? getRelay(intent.relay) : null;
   const hint = !relay && intent.relay ? getRelay(intent.relay) : null;
   let direct = !!direct0;
   let effMode = mode;
+  const IMAGE_AV = { chatgpt: 'imageChatgpt', grok: 'imageGrok', gemini: 'imageGemini' };
   // Sans Claude, on route quand même la demande vers l'IA disponible.
   if (mode === 'claude' && !av.claude && !(relay && direct)) {
     const target = relay || hint;
-    const engineOk = (e) => (target?.kind === 'image' ? av[e === 'grok' ? 'imageGrok' : 'imageChatgpt'] : av[e]);
+    const engineOk = (e) => (target?.kind === 'image' ? av[IMAGE_AV[e]] : av[e]);
     if (target && ['image', 'ask'].includes(target.kind) && engineOk(target.engine)) { relay = target; direct = true; }
-    else if (av.chatgpt) effMode = 'chatgpt';
-    else if (av.grok) effMode = 'grok';
+    else effMode = ['chatgpt', 'gemini', 'grok', 'perplexity'].find((k) => av[k]) || 'claude';
   }
-  // En conversation directe avec ChatGPT ou Grok, une demande d'image part chez eux.
-  if (!relay && effMode !== 'claude' && intent.kind === 'image') {
-    relay = { id: `image-${effMode}`, label: `Image · ${effMode === 'grok' ? 'Grok' : 'ChatGPT'}`, kind: 'image', engine: effMode };
+  // En conversation directe avec ChatGPT, Grok ou Gemini, une demande d'image part chez eux.
+  if (!relay && IMAGE_AV[effMode] && av[IMAGE_AV[effMode]] && intent.kind === 'image') {
+    relay = { id: `image-${effMode}`, label: `Image · ${NAMES[effMode]}`, kind: 'image', engine: effMode };
     direct = true;
   }
   let conv = conversationId && getConversation(conversationId);
@@ -206,10 +211,11 @@ async function handleChat(req, res) {
         onData: (d) => { acc += d; if (Date.now() - last > 200) { last = Date.now(); turn.step({ id: 'shell', output: acc.slice(-8000) }); } },
       });
       turn.step({ id: 'shell', status: r.code === 0 ? 'done' : 'error', output: r.output.slice(-20000) || '(aucune sortie)', exitCode: r.code });
-    } else if (!av.claude && !av.chatgpt && !av.grok) throw new Error('Aucune IA n’est connectée. Ouvre Réglages → Connexions pour connecter ton compte Claude, ChatGPT ou Grok.');
+    } else if (!MODES.some((k) => av[k])) throw new Error('Aucune IA n’est connectée. Ouvre Réglages → Connexions pour connecter Claude, ChatGPT, Grok, Gemini ou Perplexity.');
     else if (directRelay) await runRelayDirect({ cfg: inProject ? { ...cfg, PROJECT_DIR: conv.project, imageExport: true } : cfg, relay, text: stripMentions(text), turn, signal: controller.signal });
     else if (inProject) {
-      if (!av[agent]) throw new Error(`${agent === 'chatgpt' ? 'ChatGPT (Codex)' : agent === 'grok' ? 'Grok' : 'Claude'} n’est pas connecté. Réglages → Connexions.`);
+      if (agent === 'perplexity') throw new Error('Perplexity sert à chercher sur le web : il ne code pas dans un projet. Choisis Claude, ChatGPT, Grok ou Gemini (Claude peut lui confier des recherches).');
+      if (!av[agent]) throw new Error(`${{ chatgpt: 'ChatGPT (Codex)', gemini: 'Gemini' }[agent] || NAMES[agent]} n’est pas connecté. Réglages → Connexions.`);
       await runProject({
         cfg, conv, agent, perm: isCompact ? 'read' : conv.perm || 'ask', effort: isCompact ? 'normal' : effort, forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL,
         askPermission: makeAsker(conv.id, send, controller.signal),
@@ -244,8 +250,8 @@ async function testConnector(id) {
     const text = sink.parts.filter((p) => p.type === 'text').map((p) => p.text).join('').trim();
     return { ok: true, reply: text.slice(0, 200), ms: Date.now() - started };
   }
-  const provider = id === 'codex' ? 'chatgpt' : 'grok';
-  const reply = await askAgent({ cfg, provider, prompt: 'Test de connexion : réponds uniquement « OK ».', signal: AbortSignal.timeout(120000) });
+  const provider = id === 'codex' ? 'chatgpt' : id;
+  const reply = await askAgent({ cfg, provider, prompt: provider === 'perplexity' ? 'Test de connexion : quelle est la date du jour ? Réponds en une phrase courte.' : 'Test de connexion : réponds uniquement « OK ».', signal: AbortSignal.timeout(120000) });
   return { ok: true, reply: String(reply).slice(0, 200), ms: Date.now() - started };
 }
 
@@ -286,10 +292,10 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/connectors' && m === 'GET') {
       const status = await connectorStatus(getConfig(), { force: url.searchParams.has('force') });
-      for (const id of ['claude', 'codex', 'grok']) { status[id].job = installJob(id); status[id].login = loginState(id); }
+      for (const id of ['claude', 'codex', 'grok', 'gemini']) { status[id].job = installJob(id); status[id].login = loginState(id); }
       return json(res, 200, status);
     }
-    let r = p.match(/^\/api\/connectors\/(claude|codex|grok)\/login(\/code)?$/);
+    let r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini)\/login(\/code)?$/);
     if (r) {
       const [, id, isCode] = r;
       if (m === 'GET') return json(res, 200, loginState(id) || {});
@@ -302,18 +308,19 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, await orKeyInfo(getConfig())); } catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/openrouter/use' && m === 'POST') {
-      // Bascule les trois IA sur OpenRouter (les autres connexions restent enregistrées)
-      const { agents = ['claude', 'chatgpt', 'grok'] } = await readBody(req);
+      // Bascule toutes les IA sur OpenRouter (les autres connexions restent enregistrées)
+      const { agents = MODES } = await readBody(req);
       const patch = {};
-      for (const a of agents) patch[{ claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' }[a]] = 'openrouter';
+      for (const a of agents) if (AUTH_KEY[a]) patch[AUTH_KEY[a]] = 'openrouter';
       saveConfig(patch);
       invalidateStatus();
       return json(res, 200, { settings: publicSettings(), available: available(getConfig()) });
     }
     if (p === '/api/connectors/slim' && m === 'POST') { const msg = slim(); invalidateStatus(); return json(res, 200, { message: msg }); }
-    r = p.match(/^\/api\/connectors\/(claude|codex|grok)\/(install|logout|test)$/);
+    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|perplexity)\/(install|logout|test)$/);
     if (r && m === 'POST') {
       const [, id, action] = r;
+      if (id === 'perplexity' && action !== 'test') return json(res, 400, { error: 'Perplexity n’a pas d’outil à installer.' });
       if (action === 'install') return json(res, 200, install(id));
       if (action === 'logout') { await logout(id, getConfig()); return json(res, 200, { ok: true }); }
       try { return json(res, 200, await testConnector(id)); }
@@ -440,7 +447,7 @@ const server = http.createServer(async (req, res) => {
         const lines = [`# ${c.title}`, '', c.project ? `Projet : \`${c.project}\`\n` : ''];
         for (const msg of c.messages) {
           if (msg.role === 'user') { lines.push(`## Toi${msg.command === 'shell' ? ' (commande)' : ''}`, '', msg.text, ''); continue; }
-          lines.push(`## ${msg.agent === 'shell' ? 'Terminal' : msg.agent === 'chatgpt' ? 'ChatGPT' : msg.agent === 'grok' ? 'Grok' : 'Claude'}`, '');
+          lines.push(`## ${msg.agent === 'shell' ? 'Terminal' : NAMES[msg.agent] || 'Claude'}`, '');
           for (const part of msg.parts || []) {
             if (part.type === 'text') lines.push(part.text, '');
             else if (part.type === 'step' && part.kind !== 'thinking') lines.push(`> ${part.title}${part.status === 'error' ? ' (erreur)' : ''}`, '');
