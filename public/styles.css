@@ -1020,3 +1020,11 @@ svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-
 .code-acts { display: inline-flex; gap: 2px; align-items: center; }
 .code-head .code-acts button svg { width: 13px; height: 13px; }
 .top-agents .avatar { position: relative; z-index: 1; }
+
+/* Logos officiels des IA dans les avatars */
+.avatar .ai-logo { width: 66%; height: 66%; fill: currentColor; stroke: none; display: block; }
+.avatar[data-agent='claude'] .ai-logo { width: 70%; height: 70%; }
+.avatar[data-agent='chatgpt'], .avatar[data-agent='codex'] { color: #fff; }
+.avatar[data-agent='cursor'] { background: #1a1a1a; color: #fff; }
+:root[data-theme='light'] .avatar[data-agent='cursor'] { background: #111; }
+.top-agents .avatar .ai-logo { width: 62%; height: 62%; }

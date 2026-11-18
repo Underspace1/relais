@@ -168,3 +168,4 @@ Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/
 
 - Fenêtre : [Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). Les bibliothèques redistribuables du SDK sont dans `launcher/lib/`.
 - Les skills importés gardent la licence de leur dépôt d'origine.
+- Logos de Claude, ChatGPT (OpenAI), Grok (xAI) et Cursor : marques de leurs propriétaires respectifs, utilisées uniquement pour identifier chaque service. Tracés issus de [LobeHub Icons](https://github.com/lobehub/lobe-icons) (licence MIT), dans `public/logos.js`.

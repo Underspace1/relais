@@ -1,6 +1,7 @@
 /* Relais v3 — client */
 import { detectIntent } from './intent.js';
 import { VoiceInput, voiceSupport, speak, stopSpeaking, listVoices } from './voice.js';
+import { aiLogo } from './logos.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -16,6 +17,8 @@ const AGENTS = {
   skill: { name: 'Skill', mono: 'Sk' },
   shell: { name: 'Terminal', mono: '>_' },
 };
+// Logos officiels dans les avatars (Claude, ChatGPT, Grok, Cursor)
+for (const k of Object.keys(AGENTS)) { const logo = aiLogo(k); if (logo) AGENTS[k].mono = logo; }
 
 const I = {
   chev: '<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
@@ -365,7 +368,7 @@ function renderEmpty() {
   inner.append(h(`<div class="empty">
     <h2 class="hello">${hi}.<br><span>Qu’est-ce qu’on crée ?</span></h2>
     <p class="lede">Écris simplement : Claude comprend quand il faut une image, un autre avis ou du code, et fait travailler la bonne IA. Essaie « dessine un logo pour mon jeu » ou « demande à Grok… ».</p>
-    ${state.status && !(a.claude && a.chatgpt && a.grok) ? `<div class="setup"><span class="avatar" data-agent="${!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'}">${!a.claude ? 'Cl' : !a.chatgpt ? 'Gp' : 'Gk'}</span><div><b>${!a.claude && !a.chatgpt && !a.grok ? 'Connecte tes comptes' : `Connecte ${!a.claude ? 'Claude' : !a.chatgpt ? 'ChatGPT' : 'Grok'}`}</b><span>Avec tes abonnements, sans clé API. Tout reste dans le dossier Relais.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
+    ${state.status && !(a.claude && a.chatgpt && a.grok) ? `<div class="setup"><span class="avatar" data-agent="${!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'}">${AGENTS[!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'].mono}</span><div><b>${!a.claude && !a.chatgpt && !a.grok ? 'Connecte tes comptes' : `Connecte ${!a.claude ? 'Claude' : !a.chatgpt ? 'ChatGPT' : 'Grok'}`}</b><span>Une clé OpenRouter (rien à installer) ou tes abonnements. Tout reste dans le dossier Relais.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
     <div class="section-label"><span>Relais rapides</span></div>
     <div class="tiles">${featured.map((r) => `
       <button type="button" class="tile ${relayAvailable(r) ? '' : 'disabled'}" data-pick-relay="${r.id}">
@@ -760,7 +763,7 @@ async function send(text, override) {
           const ag = AGENTS[d.agent] ? d.agent : 'claude';
           const av2 = $('.msg-head .avatar', view.el);
           av2.dataset.agent = ag;
-          av2.textContent = AGENTS[ag].mono;
+          av2.innerHTML = AGENTS[ag].mono;
           view.agent = ag;
           $('.msg-name', view.el).textContent = d.project && CODER_NAME[ag] ? CODER_NAME[ag] : AGENTS[ag].name;
           if (d.relay) $('.msg-name', view.el).insertAdjacentHTML('afterend', `<span class="tag">${esc(d.relay)}${d.direct ? ' · direct' : ''}</span>`);
@@ -1772,7 +1775,7 @@ function renderSkillsAdd() {
   mBody.innerHTML = `
     <div class="section-label"><span>Depuis ton compte Claude</span></div>
     <div class="import-card">
-      <span class="avatar" data-agent="claude">Cl</span>
+      <span class="avatar" data-agent="claude">${AGENTS.claude.mono}</span>
       <div><b>Mes skills Claude + Claude Design</b>
         <span>Copie dans Relais les skills de ton compte (synchronisés par Claude Code) et ceux des plugins de l’app Claude, dont <b>Design</b> : critique, design system, UX writing, accessibilité, handoff…</span>
         ${claudePacks.length ? `<span class="pack-meta">Déjà importés : ${claudePacks.map((p) => `${esc(p.name)} (${p.total})`).join(', ')}</span>` : ''}</div>
