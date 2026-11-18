@@ -1,0 +1,23 @@
+# Clés API
+.env
+.env.*
+!.env.example
+
+# Données locales : connexions aux comptes, conversations, images, réglages
+data/
+
+# Node portable et outils officiels téléchargés par Relais (Claude Code, Codex, Grok Build)
+node/
+tools/
+node_modules/
+
+# Skills importés depuis ton compte Claude ou GitHub (contenus tiers, licences à part)
+skills/packs/
+
+# Fichiers générés
+Relais.exe
+*.log
+
+# Windows
+Thumbs.db
+Desktop.ini
