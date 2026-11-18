@@ -35,6 +35,28 @@ const I = {
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   retry: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6M20 4v4.6h-4.6"/></svg>',
   pin: '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 3.8l2.5 5.1 5.6.8-4.05 3.95.96 5.6L12 16.6l-5.01 2.65.96-5.6L3.9 9.7l5.6-.8z"/></svg>',
+  thumbUp: '<svg viewBox="0 0 24 24"><path d="M7.5 10.5v9h-3v-9zM7.5 10.5l3.6-6.3a1.6 1.6 0 0 1 2.9 1.2l-.9 3.6h5a1.8 1.8 0 0 1 1.75 2.2l-1.4 6.3a1.8 1.8 0 0 1-1.75 1.5H7.5"/></svg>',
+  thumbDown: '<svg viewBox="0 0 24 24"><path d="M16.5 13.5v-9h3v9zM16.5 13.5l-3.6 6.3a1.6 1.6 0 0 1-2.9-1.2l.9-3.6h-5a1.8 1.8 0 0 1-1.75-2.2l1.4-6.3A1.8 1.8 0 0 1 7.3 4.5h9.2"/></svg>',
+  claudeSpark: '<svg viewBox="0 0 24 24" class="spark" fill="currentColor" stroke="none"><path d="M12 2.2c.5 0 .8.3.9.8l.7 5.4 3.5-4.2c.3-.4.8-.4 1.2-.1.3.3.4.8.1 1.2l-3.3 4.3 5.4-.6c.5 0 .9.3.9.8s-.3.9-.8.9l-5.4.7 4.2 3.5c.4.3.4.8.1 1.2-.3.3-.8.4-1.2.1l-4.3-3.3.6 5.4c0 .5-.3.9-.8.9s-.9-.3-.9-.8l-.7-5.4-3.5 4.2c-.3.4-.8.4-1.2.1-.3-.3-.4-.8-.1-1.2l3.3-4.3-5.4.6c-.5 0-.9-.3-.9-.8s.3-.9.8-.9l5.4-.7-4.2-3.5c-.4-.3-.4-.8-.1-1.2.3-.3.8-.4 1.2-.1l4.3 3.3-.6-5.4c0-.5.3-.9.8-.9z"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  plug2: '<svg viewBox="0 0 24 24"><path d="M9 3.5v4M15 3.5v4M6.5 7.5h11V11a5.5 5.5 0 0 1-11 0zM12 16.5v4"/></svg>',
+  image: '<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8 8.5"/></svg>',
+  globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5s1.1-5.9 3.6-8.5z"/></svg>',
+  telescope: '<svg viewBox="0 0 24 24"><path d="M4 14l11-6 2 4-11 6zM15 8l4-2 2 4-4 2M9.5 16.5L7 21M11 15.7l2.5 5.3"/></svg>',
+  pen: '<svg viewBox="0 0 24 24"><path d="M4 20c4-1 6-3 7-6l6-9 3 2-6 9c-1.5 2.5-4.5 4-10 4z"/><path d="M14 8l3 2"/></svg>',
+  cap: '<svg viewBox="0 0 24 24"><path d="M2.5 9.5L12 5l9.5 4.5L12 14z"/><path d="M6.5 11.5v4.5c3 2 8 2 11 0v-4.5M21.5 9.5v5"/></svg>',
+  code: '<svg viewBox="0 0 24 24"><path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/></svg>',
+  relay: '<svg viewBox="0 0 24 24"><path d="M5 12h4l2-5 2 10 2-5h4"/></svg>',
+  book: '<svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg>',
+  ghost: '<svg viewBox="0 0 24 24"><path d="M4 11h16M6.5 11l1.5-5.5h8l1.5 5.5"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/><path d="M10.6 16h2.8"/></svg>',
+  chat: '<svg viewBox="0 0 24 24"><path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4.5 20l1-4A7.5 7.5 0 1 1 20 12.5z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
+  help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.5M12 17h.01"/></svg>',
+  chart: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>',
+  chevDown: '<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>',
+  chevRight: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  coffee: '<svg viewBox="0 0 24 24"><path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v2.5M11 3.5v2.5"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
   // onglets réglages
   general: '<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
@@ -68,7 +90,7 @@ const I = {
 
 const DEFAULT_PREFS = {
   theme: 'auto', fontSize: 'm', sendKey: 'enter', stepsOpen: false, perm: 'ask', effort: 'normal', style: 'normal', web: false,
-  panel: false, sidebar: true, showThinking: true, notify: true, sound: false, width: 'normal',
+  panel: false, sidebar: true, showThinking: true, notify: true, sound: false, width: 'normal', chatFont: 'serif',
   voiceEngine: 'auto', voiceLang: 'fr-FR', voiceAutoSend: false, voiceRead: false, voiceName: '', voiceRate: 1,
 };
 
@@ -137,6 +159,7 @@ function savePrefs() {
   if (state.prefs.theme === 'auto') delete root.dataset.theme; else root.dataset.theme = state.prefs.theme;
   if (state.prefs.fontSize === 'm') delete root.dataset.size; else root.dataset.size = state.prefs.fontSize;
   root.dataset.width = state.prefs.width;
+  root.dataset.chatFont = state.prefs.chatFont || 'serif';
   $('#app').classList.toggle('side-hidden', !state.prefs.sidebar);
   setMode(state.mode);
   if (typeof syncHostBackground === 'function') syncHostBackground();
@@ -271,12 +294,17 @@ function connState(id) {
   return { label: 'à connecter', ok: false };
 }
 
+/** Bas de la barre latérale : ton profil et l'état des IA (comme le compte dans Claude Desktop). */
 function renderConnCard() {
+  const b = $('#profileBtn');
+  if (!b) return;
+  const name = settings().USER_NAME || 'Toi';
   const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity']];
-  $('#connCard').innerHTML = rows.map(([id, a]) => {
-    const st = connState(id);
-    return `<div class="conn-row ${st.ok ? '' : 'off'}"><i class="dot" data-agent="${a}"></i>${AGENTS[a].name}<span class="st ${st.ok ? 'ok' : ''}">${st.label}</span></div>`;
-  }).join('');
+  const states = rows.map(([id, a]) => [a, connState(id)]);
+  const n = states.filter(([, st]) => st.ok).length;
+  b.innerHTML = `<span class="initial">${esc(name.trim()[0]?.toUpperCase() || 'R')}</span>
+    <span class="p-txt"><b>${esc(name)}</b><small><span class="p-dots">${states.map(([a, st]) => `<i class="dot ${st.ok ? '' : 'off'}" data-agent="${a}" title="${AGENTS[a].name} : ${esc(st.label)}"></i>`).join('')}</span>${n ? `${n} IA connectée${n > 1 ? 's' : ''}` : 'Aucune IA connectée'}</small></span>
+    <svg viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>`;
 }
 
 function renderTopAgents() {
@@ -295,29 +323,23 @@ function groupLabel(ts) {
   return new Date(ts).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
+const SIDEBAR_MAX = 40;
 function renderConvList() {
   const el = $('#convList');
-  const q = state.search.trim().toLowerCase();
-  const base = q && state.searchHits ? state.searchHits : state.convs.filter((c) => !q || (c.title || '').toLowerCase().includes(q));
-  const f = state.convFilter;
-  const list = base.filter((c) => f === 'all' || (f === 'chat' ? !c.project : state.project ? c.project === state.project.path : !!c.project));
-  $$('#convFilter [data-conv-filter]').forEach((b) => b.classList.toggle('on', b.dataset.convFilter === f));
+  // En projet, la barre latérale montre les sessions de ce projet ; sinon toutes les conversations.
+  const list = state.project ? state.convs.filter((c) => c.project === state.project.path) : state.convs;
   if (!list.length) {
-    el.innerHTML = `<div class="conv-empty">${q ? 'Aucun résultat.' : f === 'project' ? (state.project ? `Aucune session dans ${esc(state.project.name)}.` : 'Ouvre un projet pour voir ses sessions.') : 'Tes conversations apparaîtront ici.'}</div>`;
+    el.innerHTML = `<div class="conv-group">${state.project ? 'Sessions du projet' : 'Récents'}</div><div class="conv-empty">${state.project ? `Aucune session dans ${esc(state.project.name)}.` : 'Tes conversations apparaîtront ici.'}</div>`;
     return;
   }
   const pinned = list.filter((c) => c.pinned);
   const rest = list.filter((c) => !c.pinned);
-  const item = (c) => `<div class="conv-item ${c.id === state.convId ? 'active' : ''}" role="button" tabindex="0" data-conv="${c.id}" title="${c.project ? esc(c.project) : ''}">
-      ${c.project ? `<span class="conv-proj">${FOLDER_ICON}</span>` : `<i class="dot" data-agent="${esc(c.mode || 'claude')}"></i>`}<span class="t">${esc(c.title || 'Sans titre')}${c.snippet ? `<small>${esc(c.snippet)}</small>` : ''}</span>
-      <span class="acts"><button type="button" data-pin="${c.id}" data-pinned="${c.pinned ? 1 : 0}" title="${c.pinned ? 'Désépingler' : 'Épingler'}">${I.pin}</button><button type="button" data-rename="${c.id}" title="Renommer">${I.edit}</button><button type="button" data-del="${c.id}" title="Supprimer">${I.trash}</button></span></div>`;
-  let html = pinned.length ? `<div class="conv-group">Épinglées</div>${pinned.map(item).join('')}` : '';
-  let last = '';
-  for (const c of rest) {
-    const g = groupLabel(c.updatedAt);
-    if (g !== last) { html += `<div class="conv-group">${g}</div>`; last = g; }
-    html += item(c);
-  }
+  const item = (c) => `<div class="conv-item ${c.id === state.convId ? 'active' : ''}" role="button" tabindex="0" data-conv="${c.id}" title="${esc(c.title || '')}${c.project ? `\n${esc(c.project)}` : ''}">
+      ${c.project && !state.project ? `<span class="conv-proj">${FOLDER_ICON}</span>` : ''}<span class="t">${esc(c.title || 'Sans titre')}</span>
+      <span class="acts"><button type="button" data-pin="${c.id}" data-pinned="${c.pinned ? 1 : 0}" title="${c.pinned ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${I.star}</button><button type="button" data-rename="${c.id}" title="Renommer">${I.edit}</button><button type="button" data-del="${c.id}" title="Supprimer">${I.trash}</button></span></div>`;
+  let html = pinned.length ? `<div class="conv-group">Favoris</div>${pinned.map(item).join('')}` : '';
+  html += `<div class="conv-group">${state.project ? `Sessions · ${esc(state.project.name)}` : 'Récents'}</div>${rest.slice(0, SIDEBAR_MAX).map(item).join('')}`;
+  if (rest.length > SIDEBAR_MAX) html += `<button type="button" class="conv-more" data-open-convs>Toutes les conversations (${list.length}) →</button>`;
   el.innerHTML = html;
 }
 
@@ -356,7 +378,7 @@ function renderProjectEmpty() {
     <div class="proj-card">${FOLDER_ICON}<div><b>${esc(p.name)}</b><span>${esc(p.path)}</span></div><span class="pill">${esc(p.type || 'Dossier')}</span>
       <button type="button" class="btn sm" data-reveal="${esc(p.path)}">Ouvrir le dossier</button></div>
     <h2 class="hello">On construit quoi<br><span>dans ${esc(p.name)} ?</span></h2>
-    <p class="lede">Choisis l’IA qui code en bas à droite — ${CODER_NAME.claude}, ${CODER_NAME.chatgpt} ou ${CODER_NAME.grok} — et le niveau d’autorisation à gauche. Elle lit, modifie et teste directement les fichiers de ce dossier.</p>
+    <p class="lede">Choisis l’IA qui code en bas à droite (${CODER_NAME.claude}, ${CODER_NAME.chatgpt}, ${CODER_NAME.grok} ou ${CODER_NAME.gemini}) et le niveau d’autorisation à gauche. Elle lit, modifie et teste directement les fichiers de ce dossier.</p>
     ${!a[state.mode] ? `<div class="setup"><span class="avatar" data-agent="${state.mode}">${AGENTS[state.mode].mono}</span><div><b>${CODER_NAME[state.mode]} n’est pas connecté</b><span>Connecte ton compte, ou une clé OpenRouter (rien à installer), pour coder dans ce projet.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
     <div class="section-label"><span>Pour commencer</span></div>
     <div class="tiles">${CODE_STARTERS.map((s, i) => `<button type="button" class="tile" data-code-starter="${i}"><b>${esc(s.t)}</b><span>${esc(s.d)}</span></button>`).join('')}</div>
@@ -364,23 +386,16 @@ function renderProjectEmpty() {
 }
 
 function renderEmpty() {
-  if (state.project) return renderProjectEmpty();
-  const hour = new Date().getHours();
-  const hi = `${hour < 6 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir'}${settings().USER_NAME ? ` ${esc(settings().USER_NAME)}` : ''}`;
+  if (state.project) { setHome(false); return renderProjectEmpty(); }
   const a = av();
-  const featured = ['image-chatgpt', 'design', 'design-roblox-ui', 'roblox-icon', 'debate', 'code-project'].map((id) => relays().find((r) => r.id === id)).filter(Boolean);
+  const none = state.status && !MODES.some((k) => a[k]);
   inner.innerHTML = '';
-  inner.append(h(`<div class="empty">
-    <h2 class="hello">${hi}.<br><span>Qu’est-ce qu’on crée ?</span></h2>
-    <p class="lede">Écris simplement : Claude comprend quand il faut une image, un autre avis ou du code, et fait travailler la bonne IA. Essaie « dessine un logo pour mon jeu », « cherche les nouveautés de Roblox Studio » ou « demande à Gemini… ».</p>
-    ${state.status && !(a.claude && a.chatgpt && a.grok) ? `<div class="setup"><span class="avatar" data-agent="${!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'}">${AGENTS[!a.claude ? 'claude' : !a.chatgpt ? 'chatgpt' : 'grok'].mono}</span><div><b>${!a.claude && !a.chatgpt && !a.grok ? 'Connecte tes comptes' : `Connecte ${!a.claude ? 'Claude' : !a.chatgpt ? 'ChatGPT' : 'Grok'}`}</b><span>Une clé OpenRouter (rien à installer) ou tes abonnements. Tout reste dans le dossier Relais.</span></div><button class="btn primary" type="button" data-open-settings="connexions">Connecter</button></div>` : ''}
-    <div class="section-label"><span>Relais rapides</span></div>
-    <div class="tiles">${featured.map((r) => `
-      <button type="button" class="tile ${relayAvailable(r) ? '' : 'disabled'}" data-pick-relay="${r.id}">
-        <span class="tile-top">${chainHtml(r.chain)}</span>
-        <b>${esc(r.label)}</b><span>${esc(r.hint)}</span>
-      </button>`).join('')}
-    </div></div>`));
+  inner.append(h(`<div class="empty home">
+    <div class="hello-row">${state.incognito ? `<span class="spark">${I.ghost}</span>` : I.claudeSpark}<h2 class="hello">${esc(greeting())}</h2></div>
+    ${state.incognito ? '<p class="lede" style="margin:10px auto 0">Cette conversation ne sera ni enregistrée, ni ajoutée à la mémoire de Relais.</p>' : ''}
+    ${none ? '<div class="setup"><span class="avatar" data-agent="claude">' + AGENTS.claude.mono + '</span><div><b>Connecte tes IA</b><span>Une clé OpenRouter (rien à installer) ou tes abonnements. Tout reste dans le dossier Relais.</span></div><button class="btn accent" type="button" data-open-settings="connexions">Connecter</button></div>' : ''}
+  </div>`));
+  setHome(true);
 }
 
 function fmtMs(ms) { return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace('.', ',')} s`; }
@@ -496,6 +511,9 @@ function assistantShell(agent, skillSlug, index) {
       <button type="button" data-retry>${I.retry}<span>Relancer</span></button>
       ${voiceSupport.tts ? `<button type="button" data-speak-msg>${I.speaker}<span>Lire</span></button>` : ''}
       <button type="button" data-fork-msg title="Nouvelle conversation à partir d’ici">${I.fork}<span>Dupliquer d’ici</span></button>
+      <span class="act-sep"></span>
+      <button type="button" data-feedback="up" title="Bonne réponse">${I.thumbUp}</button>
+      <button type="button" data-feedback="down" title="Mauvaise réponse">${I.thumbDown}</button>
     </div></div>`);
   return { el, partsEl: $('.parts', el), parts: [], els: [], agent: a };
 }
@@ -582,6 +600,7 @@ function assistantEl(m, index, { last = false } = {}) {
     view.partsEl.append(e);
   }
   finishView(view, { ms: m.ms, error: m.error, stats: m.stats });
+  if (m.feedback?.value) $(`[data-feedback="${m.feedback.value}"]`, view.el)?.classList.add('on');
   return view.el;
 }
 
@@ -702,6 +721,7 @@ async function send(text, override) {
   lastSent = { text, ...req };
 
   if ($('.empty', inner)) inner.innerHTML = '';
+  setHome(false);
   const userIndex = state.msgCount;
   const userMsg = { text, skill: req.skill, relay: req.relay, direct: req.direct, attachments: req.attachments, command: req.command };
   inner.append(userEl(userMsg, userIndex));
@@ -735,7 +755,7 @@ async function send(text, override) {
       body: JSON.stringify({
         conversationId: state.convId, text, mode: req.mode, skill: req.skill, relay: req.relay, direct: req.direct,
         project: state.project?.path || null, perm: state.perm, effort: state.prefs.effort, style: state.prefs.style, web: webAvailable() && !!state.prefs.web,
-        attachments: (req.attachments || []).map((x) => x.id), command: req.command,
+        attachments: (req.attachments || []).map((x) => x.id), command: req.command, incognito: state.incognito,
       }),
       signal: controller.signal,
     });
@@ -762,8 +782,8 @@ async function send(text, override) {
         if (ev === 'conversation') {
           const isNew = state.convId !== d.id;
           state.convId = d.id;
-          $('#convTitle').textContent = d.title;
-          if (isNew) { state.convMessages = []; loadConvs(); }
+          $('#convTitle').textContent = d.incognito ? 'Conversation privée' : d.title;
+          if (isNew) { state.convMessages = []; if (!d.incognito) loadConvs(); setMode(state.mode); }
         } else if (ev === 'route') {
           const ag = AGENTS[d.agent] ? d.agent : 'claude';
           const av2 = $('.msg-head .avatar', view.el);
@@ -869,8 +889,9 @@ function newChat() {
   state.stats = null;
   state.queue = [];
   renderQueue();
-  $('#convTitle').textContent = state.project ? `Nouvelle session · ${state.project.name}` : 'Nouvelle conversation';
+  $('#convTitle').textContent = state.incognito ? 'Conversation privée' : state.project ? `Nouvelle session · ${state.project.name}` : 'Nouvelle conversation';
   renderEmpty();
+  setMode(state.mode);
   renderConvList();
   if (state.panelOpen) renderInspector();
   closeNav();
@@ -881,6 +902,8 @@ async function openConv(id) {
   if (state.streaming) state.streaming.controller.abort();
   try {
     const c = await api(`/api/conversations/${id}`);
+    if (state.incognito) { state.incognito = false; $('#incogBtn').setAttribute('aria-pressed', 'false'); $('#incogBadge').hidden = true; document.body.classList.remove('incognito'); }
+    setHome(false);
     state.convId = c.id;
     $('#convTitle').textContent = c.title;
     state.project = c.project ? await api('/api/projects/info', { method: 'POST', body: { path: c.project } }).catch(() => ({ path: c.project, name: c.project.split(/[\\/]/).pop() })) : null;
@@ -913,19 +936,42 @@ async function openConv(id) {
 async function editMessage(index) {
   const m = state.convMessages[index];
   if (!m || state.streaming) return;
-  const next = prompt('Modifier le message (la suite de la conversation sera remplacée) :', m.text || '');
-  if (next === null || !next.trim()) return;
-  try {
-    if (state.convId) await api(`/api/conversations/${state.convId}/truncate`, { method: 'POST', body: { at: index } });
-    // Retire les messages affichés à partir de celui-ci
-    const els = $$('.msg, .system-note', inner);
-    els.forEach((e) => { if (Number(e.dataset.index) >= index) e.remove(); });
-    state.convMessages = state.convMessages.slice(0, index);
-    state.msgCount = index;
-    state.attachments = m.attachments || [];
-    renderAttachments();
-    send(next.trim());
-  } catch (e) { toast(e.message, true); }
+  const el = $(`.msg.user[data-index="${index}"]`, inner);
+  if (!el || $('.edit-box', el)) return;
+  const bubble = $('.bubble', el);
+  const box = h(`<div class="edit-box"><textarea aria-label="Modifier le message"></textarea>
+    <div class="edit-row"><span class="note">La suite de la conversation sera remplacée.</span>
+      <button type="button" class="btn sm" data-edit-cancel>Annuler</button><button type="button" class="btn sm accent" data-edit-send>Envoyer</button></div></div>`);
+  const ta = $('textarea', box);
+  ta.value = m.text || '';
+  bubble.hidden = true;
+  $('.msg-actions', el).hidden = true;
+  bubble.after(box);
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = `${Math.min(ta.scrollHeight, 320)}px`; };
+  grow();
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  const cancel = () => { box.remove(); bubble.hidden = false; $('.msg-actions', el).hidden = false; };
+  const submit = async () => {
+    const next = ta.value.trim();
+    if (!next) return;
+    try {
+      if (state.convId) await api(`/api/conversations/${state.convId}/truncate`, { method: 'POST', body: { at: index } });
+      $$('.msg, .system-note', inner).forEach((e) => { if (Number(e.dataset.index) >= index) e.remove(); });
+      state.convMessages = state.convMessages.slice(0, index);
+      state.msgCount = index;
+      state.attachments = m.attachments || [];
+      renderAttachments();
+      send(next);
+    } catch (e) { toast(e.message, true); }
+  };
+  ta.addEventListener('input', grow);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
+  });
+  $('[data-edit-cancel]', box).addEventListener('click', cancel);
+  $('[data-edit-send]', box).addEventListener('click', submit);
 }
 
 async function forkConversation(at) {
@@ -959,7 +1005,7 @@ function setMode(mode) {
     input.placeholder = `Que doit faire ${CODER_NAME[mode]} dans ${state.project.name} ?`;
     $('#hint').textContent = `${key} · / commandes · @ fichiers · ! terminal · Maj+Tab mode`;
   } else {
-    input.placeholder = r ? (r.kind === 'image' ? 'Décris l’image voulue…' : 'Ta demande…') : mode === 'claude' ? 'Demande n’importe quoi : « dessine… », « cherche… », « demande à Gemini… », @ChatGPT' : mode === 'perplexity' ? 'Que veux-tu chercher sur le web ?' : `Écris à ${AGENTS[mode].name}…`;
+    input.placeholder = r ? (r.kind === 'image' ? 'Décris l’image voulue…' : 'Ta demande…') : mode === 'claude' ? (state.convId ? 'Réponds à Claude…' : 'Comment puis-je t’aider aujourd’hui ?') : mode === 'perplexity' ? 'Que veux-tu chercher sur le web ?' : `Écris à ${AGENTS[mode].name}…`;
     $('#hint').textContent = mode === 'claude' ? `${key} · / commandes · @ IA · Ctrl M dicter` : mode === 'perplexity' ? `Recherche web avec Perplexity, réponses sourcées · ${key}` : `Conversation directe avec ${AGENTS[mode].name} · ${key}`;
   }
   renderProjectUI();
@@ -1078,7 +1124,7 @@ function updateSendBtn() {
 }
 
 /* ---------- Popover ---------- */
-function closePop() { pop.hidden = true; state.pop = null; $$('.tool-btn').forEach((b) => b.setAttribute('aria-expanded', 'false')); }
+function closePop() { pop.hidden = true; pop.classList.remove('compact', 'at-right'); state.pop = null; $$('.tool-btn').forEach((b) => b.setAttribute('aria-expanded', 'false')); }
 
 function openRelayPop() {
   state.pop = 'relay';
@@ -1096,6 +1142,8 @@ function slashQuery() { const m = input.value.match(/^\/([\w-]*)$/); return m ? 
 /* ---------- Commandes « / » (inspirées de Claude Code) ---------- */
 const COMMANDS = [
   { name: 'clear', alias: ['new'], desc: 'Nouvelle conversation (ou session dans le projet)', run: () => newChat() },
+  { name: 'prive', alias: ['incognito', 'private'], desc: 'Conversation privée : ni enregistrée, ni mémorisée', run: () => setIncognito(!state.incognito) },
+  { name: 'conversations', alias: ['historique', 'history'], desc: 'Toutes les conversations : chercher, favoris, supprimer', run: () => openConversations() },
   { name: 'compact', desc: 'Résume la conversation pour alléger le contexte', arg: true, when: () => !!state.convId, run: (a) => compact(a) },
   { name: 'plan', desc: 'Passer en mode plan : l’IA propose avant d’agir', when: () => !!state.project, run: () => setPerm('plan') },
   { name: 'mode', alias: ['permissions'], desc: 'Choisir le niveau d’autorisation', when: () => !!state.project, run: () => openPermPop() },
@@ -1379,6 +1427,7 @@ function renderTab() {
       <div class="group">
         ${row('Thème', '', prefSeg('theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
         ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
+        ${row('Police des réponses', 'Serif comme l’app Claude, ou une police sans empattement.', prefSeg('chatFont', [['serif', 'Serif'], ['sans', 'Sans'], ['system', 'Système']]))}
         ${row('Largeur du fil', '', prefSeg('width', [['normal', 'Normale'], ['wide', 'Large'], ['full', 'Pleine']]))}
         ${row('Animation au démarrage', 'Le logo qui se dessine et la signature « Relais ».', `<input type="checkbox" class="switch" data-pref-bool="splash" ${state.prefs.splash !== false ? 'checked' : ''}>`)}
         ${row('Assistant de configuration', 'Reprendre la configuration guidée : comptes, préférences, voix, projet.', '<button type="button" class="btn sm" data-open-setup>Relancer</button>')}
@@ -1397,7 +1446,10 @@ function renderTab() {
         ${row('Langue des réponses', '', sel('RESPONSE_LANGUAGE', [['auto', 'Comme mon message'], ['fr', 'Français'], ['en', 'Anglais']], s.RESPONSE_LANGUAGE))}
       </div>
       <div class="group-title">Toi</div>
-      <div class="group">${row('Ton prénom', 'Pour que les IA s’adressent à toi.', inp('USER_NAME', s.USER_NAME, 'Ton prénom', false))}</div>
+      <div class="group">
+        ${row('Ton prénom', 'Pour que les IA s’adressent à toi.', inp('USER_NAME', s.USER_NAME, 'Ton prénom', false))}
+        ${row('Ce qui te décrit le mieux', 'Les IA adaptent leurs exemples et leur niveau.', sel('USER_ROLE', [['', '—'], ['eleve', 'Élève / étudiant'], ['dev-jeux', 'Créateur de jeux (Roblox…)'], ['dev', 'Développeur'], ['design', 'Designer / créatif'], ['ecriture', 'Écriture / contenu'], ['pro', 'Professionnel (bureau, gestion)'], ['curieux', 'Curieux, usage perso']], s.USER_ROLE))}
+      </div>
       <div class="group-title">Instructions personnalisées</div>
       <div class="group"><div class="row stack">
         <div class="row-text"><b>Ce que les IA doivent savoir sur toi</b><span>Ajouté à chaque conversation. Ex. « Je crée un jeu Roblox d’obby, je débute en Luau, réponds simplement. »</span></div>
@@ -1914,8 +1966,9 @@ function openDesignViewer(id) {
   $('iframe', v).src = `/designs/${id}.html?t=${Date.now()}`;
   $('[data-dv-download]', v).href = `/designs/${id}.html?download=1`;
   v.dataset.id = id;
+  v._code = null;
   setDevice('desktop');
-  v.hidden = false;
+  showArtifact();
 }
 function setDevice(dev) {
   const v = $('#designViewer');
@@ -1923,13 +1976,20 @@ function setDevice(dev) {
   $$('[data-dv-device]', v).forEach((b) => b.classList.toggle('on', b.dataset.dvDevice === dev));
 }
 
+const artTabs = (on) => `<div class="seg" style="margin:0 0 16px"><button type="button" data-art-tab="designs" class="${on === 'designs' ? 'on' : ''}">Designs</button><button type="button" data-art-tab="images" class="${on === 'images' ? 'on' : ''}">Images</button></div>`;
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-art-tab]');
+  if (b) (b.dataset.artTab === 'images' ? openGallery : openDesigns)();
+});
+
 async function openDesigns() {
   closeNav();
-  showModal('Designs');
+  closeFloat();
+  showModal('Artefacts');
   mBody.innerHTML = '<p class="note">Chargement…</p>';
   try {
     const list = await api('/api/designs');
-    mBody.innerHTML = `<div class="import-card">
+    mBody.innerHTML = `${artTabs('designs')}<div class="import-card">
         <span class="design-ico big">${I.design}</span>
         <div><b>Designs créés dans Relais</b><span>Demande simplement « fais une maquette de… », « prototype de… » ou l’UI de ton jeu : Claude crée un HTML interactif affiché en direct, que tu peux faire évoluer, télécharger ou faire coder dans ton projet. L’app web Claude Design reste disponible sur claude.com.</span></div>
         <a class="btn" href="${CLAUDE_DESIGN_URL}" target="_blank" rel="noopener">${I.ext}Claude Design</a>
@@ -1945,13 +2005,14 @@ async function openDesigns() {
 /* ---------- Galerie ---------- */
 async function openGallery() {
   closeNav();
-  showModal('Images');
+  closeFloat();
+  showModal('Artefacts');
   mBody.innerHTML = '<p class="note">Chargement…</p>';
   try {
     const imgs = await api('/api/images');
-    mBody.innerHTML = imgs.length
+    mBody.innerHTML = artTabs('images') + (imgs.length
       ? `<div class="gallery">${imgs.map((i) => `<button type="button" data-zoom="${esc(i.url)}" data-caption="${esc(new Date(i.at).toLocaleString('fr-FR'))}"><img src="${esc(i.url)}" alt="" loading="lazy"></button>`).join('')}</div>`
-      : '<p class="note">Aucune image pour l’instant. Essaie le relais « Image · ChatGPT ».</p>';
+      : '<p class="note">Aucune image pour l’instant. Écris « dessine… » ou essaie le relais « Image · Gemini ».</p>');
   } catch (e) { mBody.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
 }
 
@@ -1972,7 +2033,6 @@ $('#menuBtn').addEventListener('click', () => { $('#app').classList.add('nav-ope
 scrim.addEventListener('click', () => { closeModal(); closeNav(); });
 modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 thread.addEventListener('scroll', () => $('.topbar').classList.toggle('scrolled', thread.scrollTop > 4));
-$('#search').addEventListener('input', (e) => { state.search = e.target.value; renderConvList(); });
 async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { toast('Copie impossible', true); return false; } }
 
 /* Réglages : enregistrement automatique */
@@ -2252,7 +2312,7 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if ((el = t.closest('[data-dv-device]'))) return setDevice(el.dataset.dvDevice);
-  if ((el = t.closest('[data-dv-close]'))) { $('#designViewer').hidden = true; $('#designViewer iframe').removeAttribute('srcdoc'); $('#designViewer iframe').src = 'about:blank'; return; }
+  if ((el = t.closest('[data-dv-close]'))) { document.body.classList.remove('with-artifact'); $('#designViewer').classList.remove('full'); $('#designViewer').hidden = true; $('#designViewer iframe').removeAttribute('srcdoc'); $('#designViewer iframe').src = 'about:blank'; return; }
   if ((el = t.closest('[data-dv-reload]'))) {
     const f = $('#designViewer iframe');
     if (f.hasAttribute('srcdoc')) { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; } else f.src = `/designs/${$('#designViewer').dataset.id}.html?t=${Date.now()}`;
@@ -2313,6 +2373,7 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if ((el = t.closest('[data-retry]'))) return openRetryPop(el);
+  if ((el = t.closest('[data-feedback]'))) return giveFeedback(el);
   if ((el = t.closest('[data-retry-with]'))) {
     closePop();
     const base = lastSent || retrySource(Number(el.dataset.index));
@@ -2387,13 +2448,16 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (mod && e.shiftKey && k === 'p') { e.preventDefault(); return openPalette(); }
   if (mod && !e.shiftKey && k === 'p') { e.preventDefault(); return openPalette('conv'); }
-  if (mod && k === 'k') { e.preventDefault(); newChat(); }
+  // Comme Claude Desktop : Ctrl K cherche, Ctrl Maj O ouvre une nouvelle conversation, Ctrl Maj I la rend privée.
+  if (mod && !e.shiftKey && k === 'k') { e.preventDefault(); return openPalette('conv'); }
+  if (mod && e.shiftKey && k === 'o') { e.preventDefault(); return newChat(); }
+  if (mod && e.shiftKey && k === 'i') { e.preventDefault(); return setIncognito(!state.incognito); }
   if (mod && e.key === ',') { e.preventDefault(); openSettings(); }
   if (mod && k === 'b') { e.preventDefault(); toggleSidebar(); }
   if (mod && k === 'j') { e.preventDefault(); setPanel(!state.panelOpen); }
   if (mod && k === 'm') { e.preventDefault(); toggleVoice(); }
   if (mod && e.key === '/') { e.preventDefault(); openHelp(); }
-  if (mod && e.shiftKey && k === 'e' && state.convId) { e.preventDefault(); location.href = `/api/conversations/${state.convId}/export.md`; }
+  if (mod && e.shiftKey && k === 'e' && state.convId && !state.incognito) { e.preventDefault(); location.href = `/api/conversations/${state.convId}/export.md`; }
   if (e.key === 'Escape' && !$('#palette').hidden) { closePalette(); return; }
   if (e.key === 'Escape' && voice.busy) { voice.cancel(); stopVoiceConversation(); return; }
   if (e.key === 'Escape') {
@@ -2407,9 +2471,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('#newChat').addEventListener('click', newChat);
-$('#newChatIcon').addEventListener('click', newChat);
 $('#openSkills').addEventListener('click', () => openSkills());
-$('#openGallery').addEventListener('click', openGallery);
 $('#openDesigns').addEventListener('click', openDesigns);
 $('#openProjects').addEventListener('click', openProjects);
 $('#projectBtn').addEventListener('click', openProjects);
@@ -2458,22 +2520,41 @@ function modelField(k, value, ph = '') {
   return sel(k, opts, value || '');
 }
 
+const MODE_HINT = {
+  claude: 'Chef d’orchestre : fait travailler les autres IA',
+  chatgpt: 'Conversation directe, images',
+  grok: 'Conversation directe, autre avis',
+  gemini: 'Conversation directe, images Nano Banana',
+  perplexity: 'Recherche web avec sources',
+};
 function renderModelBtn() {
   const b = $('#modelBtn');
   if (!b) return;
   const k = modelKey();
-  b.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span>${esc(modelLabel(k, settings()[k]))}</span>`;
+  const name = state.project ? CODER_NAME[state.mode] || AGENTS[state.mode].name : AGENTS[state.mode].name;
+  const model = modelLabel(k, settings()[k]);
+  b.innerHTML = `<i class="dot" data-agent="${state.mode}"></i><span class="m-name">${esc(name)}</span><span class="m-sub">${esc(model)}</span>${I.chevDown}`;
+  b.title = `IA et modèle : ${name} · ${model}`;
 }
 
 function openModelPop() {
+  if (state.pop === 'model') return closePop();
+  closeFloat();
   const k = modelKey();
   const list = state.models?.[k] || [];
   state.pop = 'model';
+  pop.classList.add('compact', 'at-right');
   $('#modelBtn').setAttribute('aria-expanded', 'true');
+  const a = av();
   const cur = settings()[k] || '';
+  const name = state.project ? CODER_NAME[state.mode] || AGENTS[state.mode].name : AGENTS[state.mode].name;
+  const modes = state.project ? CODERS : MODES;
   const items = [...(ALLOWS_DEFAULT.includes(k) ? [{ id: '', label: modelLabel(k, ''), hint: k.startsWith('OPENROUTER_') ? 'Relais choisit le modèle le plus récent' : 'Laisse l’outil choisir' }] : []), ...list];
-  pop.innerHTML = `<div class="pop-group">Modèle · ${state.project ? CODER_NAME[state.mode] : AGENTS[state.mode].name}</div>
-    ${items.length ? `<div class="pop-grid">${items.map((m) => `<button type="button" class="pop-item ${m.id === cur ? 'active' : ''}" data-pick-model="${esc(m.id)}" data-key="${k}"><b>${esc(m.label)}${m.id === cur ? ' ✓' : ''}</b><span>${esc(m.hint || m.id || '')}</span></button>`).join('')}</div>`
+  pop.innerHTML = `<div class="menu-label">${state.project ? 'Qui code dans le projet' : 'Écrire à'}</div>
+    ${modes.map((m) => `<button type="button" class="menu-row ${m === state.mode ? 'active' : ''}" data-set-mode="${m}"><i class="dot" data-agent="${m}" style="opacity:${a[m] ? 1 : 0.35}"></i><span class="mr-txt">${esc(state.project ? CODER_NAME[m] || AGENTS[m].name : AGENTS[m].name)}<small>${esc(state.project ? (m === 'claude' ? 'Peut confier des tâches aux autres IA' : 'Lit, modifie et teste les fichiers') : MODE_HINT[m])}${a[m] ? '' : ' · non connecté'}</small></span>${m === state.mode ? `<span class="mr-end">${I.check}</span>` : ''}</button>`).join('')}
+    <div class="menu-sep"></div>
+    <div class="menu-label">Modèle · ${esc(name)}</div>
+    ${items.length ? items.map((m) => `<button type="button" class="menu-row ${m.id === cur ? 'active' : ''}" data-pick-model="${esc(m.id)}" data-key="${k}"><span class="mr-txt">${esc(m.label)}<small>${esc(m.hint || m.id || '')}</small></span>${m.id === cur ? `<span class="mr-end">${I.check}</span>` : ''}</button>`).join('')
       : '<div class="pop-empty">Aucune liste disponible pour l’instant. Tu peux saisir le modèle dans Réglages.</div>'}`;
   pop.hidden = false;
 }
@@ -2510,7 +2591,8 @@ function renderUsageBar() {
   const u = state.usage?.providers;
   const a = av();
   if (!u) { el.hidden = true; return; }
-  const items = USAGE_AGENTS.filter(([, ag]) => a[ag] || u[USAGE_AGENTS.find((x) => x[1] === ag)[0]]?.req7d).map(([id, ag]) => {
+  const measured = (id) => { const p = u[id]; return !!(p && (p.req7d || Object.values(p.limits?.windows || {}).some((w) => w.pct != null))); };
+  const items = USAGE_AGENTS.filter(([id, ag]) => a[ag] && measured(id)).map(([id, ag]) => {
     const p = u[id];
     const w5 = p.limits?.windows?.five_hour;
     const w7 = p.limits?.windows?.seven_day;
@@ -2836,21 +2918,24 @@ function openEffortPop() {
 }
 $('#effortBtn').addEventListener('click', () => (state.pop === 'effort' ? closePop() : openEffortPop()));
 
+/** Menu du titre (comme le menu déroulant du titre dans Claude Desktop). */
 function openConvMenu() {
-  state.pop = 'conv';
-  const has = !!state.convId;
-  const item = (cmd, icon, label, hint, on = true) => `<button type="button" class="pop-item perm-item ${on ? '' : 'disabled'}" ${on ? `data-pick-cmd="${cmd}"` : ''}><b>${icon}${label}</b><span>${esc(hint)}</span></button>`;
-  pop.innerHTML = `<div class="pop-group">Conversation</div><div class="pop-grid">
-    ${item('rename', I.edit, 'Renommer', 'Donner un titre clair', has)}
-    ${item('fork', I.fork, 'Dupliquer', 'Explorer une autre piste', has)}
-    ${item('compact', I.memory, 'Résumer (/compact)', 'Alléger le contexte', has)}
-    ${item('export', I.download, 'Exporter en Markdown', 'Ctrl Maj E', has)}
-    ${item('clear', I.plus, 'Nouvelle conversation', 'Ctrl K')}
-    ${item('help', I.keyboard, 'Raccourcis', 'Ctrl /')}
-  </div>`;
-  pop.hidden = false;
+  const btn = $('#convMenuBtn');
+  if (floatMenu._anchor === btn) return closeFloat();
+  const c = state.convs.find((x) => x.id === state.convId);
+  if (!state.convId) {
+    return openFloat(btn, `${mrow('new', I.plus, 'Nouvelle conversation', { end: 'Ctrl Maj O' })}${mrow('incognito', I.ghost, state.incognito ? 'Quitter la conversation privée' : 'Conversation privée', { sub: 'Rien n’est enregistré ni mémorisé' })}`);
+  }
+  openFloat(btn, `
+    ${mrow('conv-pin', I.star, c?.pinned ? 'Retirer des favoris' : 'Ajouter aux favoris')}
+    ${mrow('conv-rename', I.edit, 'Renommer')}
+    ${mrow('conv-fork', I.fork, 'Dupliquer', { sub: 'Explorer une autre piste' })}
+    ${mrow('conv-compact', I.memory, 'Résumer (/compact)', { sub: 'Alléger le contexte' })}
+    ${mrow('conv-export', I.download, 'Exporter en Markdown', { end: 'Ctrl Maj E' })}
+    <div class="menu-sep"></div>
+    ${mrow('conv-delete', I.trash, 'Supprimer', { cls: 'danger' })}`);
 }
-$('#convMenuBtn').addEventListener('click', () => (state.pop === 'conv' ? closePop() : openConvMenu()));
+$('#convMenuBtn').addEventListener('click', openConvMenu);
 
 async function compact(focus = '') {
   if (!state.convId) return toast('Rien à résumer pour l’instant.');
@@ -2866,6 +2951,7 @@ function toggleSidebar() {
   savePrefs();
 }
 $('#sideToggle').addEventListener('click', toggleSidebar);
+$('#sideClose').addEventListener('click', toggleSidebar);
 
 state.panelOpen = false;
 function setPanel(open) {
@@ -3108,7 +3194,9 @@ function renderPalette() {
   if (palMode !== 'conv') {
     for (const c of visibleCommands()) if (match(`${c.name} ${c.desc} ${(c.alias || []).join(' ')}`)) items.push({ group: 'Commandes', label: `/${c.name}`, hint: c.desc, run: () => c.run('') });
     const actions = [
-      ['Nouvelle conversation', 'Ctrl K', () => newChat()],
+      ['Nouvelle conversation', 'Ctrl Maj O', () => newChat()],
+      ['Conversation privée', 'Ctrl Maj I', () => setIncognito(!state.incognito)],
+      ['Toutes les conversations', '', () => openConversations()],
       ['Ouvrir un projet', '', () => openProjects()],
       ['Panneau de travail', 'Ctrl J', () => setPanel(!state.panelOpen)],
       ['Barre latérale', 'Ctrl B', () => toggleSidebar()],
@@ -3151,13 +3239,13 @@ palInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); runPaletteItem(palIndex); }
 });
 palette.addEventListener('mousedown', (e) => { if (e.target === palette) closePalette(); });
-$('#openPalette').addEventListener('click', () => { closeNav(); openPalette(); });
 
 /* ---------- Aide : raccourcis et commandes ---------- */
 const SHORTCUTS = [
   ['Entrée', 'Envoyer (Maj+Entrée : nouvelle ligne)'],
-  ['Ctrl K', 'Nouvelle conversation'],
-  ['Ctrl P', 'Rechercher une conversation'],
+  ['Ctrl Maj O', 'Nouvelle conversation'],
+  ['Ctrl K', 'Rechercher une conversation (aussi Ctrl P)'],
+  ['Ctrl Maj I', 'Conversation privée (ni enregistrée, ni mémorisée)'],
   ['Ctrl Maj P', 'Palette de commandes'],
   ['Ctrl B', 'Afficher / masquer la barre latérale'],
   ['Ctrl J', 'Panneau de travail (tâches, modifs, Git)'],
@@ -3465,6 +3553,7 @@ function effortAvailable() {
 function webAvailable() {
   const auth = authOf(state.mode);
   if (state.project) return false; // les agents de code ont déjà leurs propres outils web
+  if (state.mode === 'claude' && av().perplexity) return true; // Claude confie la recherche à Perplexity
   return auth === 'openrouter' || (state.mode === 'claude' && auth === 'account');
 }
 
@@ -3479,6 +3568,7 @@ function renderStyleWebBtns() {
   wb.hidden = !webAvailable();
   wb.setAttribute('aria-pressed', String(!!state.prefs.web));
   wb.title = state.prefs.web ? 'Recherche web activée (clic pour couper)' : 'Activer la recherche web';
+  if (typeof renderActiveTools === 'function') renderActiveTools();
 }
 
 function openStylePop() {
@@ -3490,7 +3580,7 @@ function openStylePop() {
 }
 
 function toggleWeb() {
-  if (!webAvailable()) return toast('La recherche web marche avec Claude (compte) ou une IA via OpenRouter, hors projet.', true);
+  if (!webAvailable()) return toast('La recherche web marche avec Perplexity, Claude (compte) ou une IA via OpenRouter, hors projet.', true);
   state.prefs.web = !state.prefs.web;
   savePrefs();
   toast(state.prefs.web ? 'Recherche web activée' : 'Recherche web coupée');
@@ -3550,8 +3640,9 @@ function previewCode(block) {
   dl.download = `apercu.${lang === 'mermaid' ? 'html' : EXT[lang] || 'html'}`;
   v.dataset.id = '';
   v.dataset.srcdoc = '1';
+  v._code = codeText(block);
   setDevice('desktop');
-  v.hidden = false;
+  showArtifact();
 }
 
 function downloadCode(block) {
@@ -3571,6 +3662,7 @@ function downloadCode(block) {
    ========================================================================== */
 function openAttachPop() {
   state.pop = 'attach';
+  pop.classList.add('compact');
   $('#attachBtn').setAttribute('aria-expanded', 'true');
   pop.innerHTML = `<div class="pop-group">Ajouter</div>
     <button type="button" class="pop-item perm-item" data-attach-files><b>${I.file}Fichiers ou images…</b><span>Ou glisse-dépose, ou colle (Ctrl V)</span></button>
@@ -3625,6 +3717,455 @@ async function saveUserMemory(btn) {
   catch (e) { toast(e.message, true); }
   btn.disabled = false;
 }
+
+/* ==========================================================================
+   Menus flottants (profil, titre) — comme Claude Desktop
+   ========================================================================== */
+const floatMenu = h('<div class="float-menu" id="floatMenu" role="menu" hidden></div>');
+document.body.append(floatMenu);
+
+/** Une ligne de menu. `act` est l'action lancée par runMenuAction. */
+function mrow(act, icon, label, { sub = '', end = '', cls = '', data = '' } = {}) {
+  return `<button type="button" class="menu-row ${cls}" data-act="${act}" ${data} role="menuitem">${icon || ''}<span class="mr-txt">${label}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${end ? `<span class="mr-end">${end}</span>` : ''}</button>`;
+}
+
+function openFloat(anchor, html, { above = false } = {}) {
+  closeFloat();
+  closePop();
+  floatMenu.innerHTML = html;
+  floatMenu.hidden = false;
+  floatMenu._anchor = anchor;
+  anchor.setAttribute('aria-expanded', 'true');
+  const r = anchor.getBoundingClientRect();
+  floatMenu.style.minWidth = above ? `${Math.max(240, r.width)}px` : '';
+  const m = floatMenu.getBoundingClientRect();
+  const top = above ? r.top - m.height - 6 : r.bottom + 6;
+  const left = Math.min(r.left, innerWidth - m.width - 8);
+  floatMenu.style.top = `${Math.max(8, Math.min(top, innerHeight - m.height - 8))}px`;
+  floatMenu.style.left = `${Math.max(8, left)}px`;
+  $('.menu-row', floatMenu)?.focus({ preventScroll: true });
+}
+function closeFloat() {
+  if (floatMenu.hidden) return;
+  floatMenu.hidden = true;
+  floatMenu._anchor?.setAttribute('aria-expanded', 'false');
+  floatMenu._anchor = null;
+}
+document.addEventListener('mousedown', (e) => {
+  if (floatMenu.hidden || e.target.closest('#floatMenu') || floatMenu._anchor?.contains(e.target)) return;
+  closeFloat();
+});
+document.addEventListener('keydown', (e) => {
+  if (floatMenu.hidden) return;
+  if (e.key === 'Escape') { e.stopPropagation(); const a = floatMenu._anchor; closeFloat(); a?.focus(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const rows = $$('.menu-row:not(.disabled)', floatMenu);
+    const i = rows.indexOf(document.activeElement);
+    rows[(i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus();
+  }
+}, true);
+floatMenu.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  closeFloat();
+  runMenuAction(b.dataset.act, b.dataset);
+});
+
+/** Menu du profil, en bas de la barre latérale. */
+function openProfileMenu() {
+  const btn = $('#profileBtn');
+  if (floatMenu._anchor === btn) return closeFloat();
+  const rows = [['claude', 'claude'], ['codex', 'chatgpt'], ['grok', 'grok'], ['gemini', 'gemini'], ['perplexity', 'perplexity']];
+  const themeLabel = { auto: 'Auto', light: 'Clair', dark: 'Sombre' }[state.prefs.theme] || 'Auto';
+  openFloat(btn, `
+    <div class="menu-label">${esc(settings().USER_NAME || 'Relais')}</div>
+    ${mrow('settings', I.gear, 'Réglages', { end: 'Ctrl ,' })}
+    ${mrow('connexions', I.plug2, 'Connexions', { end: `<span class="p-dots">${rows.map(([id, a]) => `<i class="dot" data-agent="${a}" style="opacity:${connState(id).ok ? 1 : 0.25}"></i>`).join('')}</span>` })}
+    ${mrow('usage', I.chart, 'Utilisation')}
+    ${mrow('theme', I.sun, 'Apparence', { end: themeLabel })}
+    <div class="menu-sep"></div>
+    ${mrow('images', I.image, 'Images générées')}
+    ${mrow('skills', I.book, 'Skills')}
+    ${mrow('palette', I.keyboard, 'Commandes', { end: 'Ctrl Maj P' })}
+    ${mrow('help', I.help, 'Raccourcis et aide', { end: 'Ctrl /' })}
+    ${mrow('setup', I.spark, 'Assistant de configuration')}`, { above: true });
+}
+$('#profileBtn').addEventListener('click', openProfileMenu);
+
+async function deleteConv(id) {
+  if (!id || !confirm('Supprimer cette conversation ?')) return;
+  await api(`/api/conversations/${id}`, { method: 'DELETE' });
+  if (id === state.convId) newChat();
+  loadConvs();
+}
+
+async function toggleFavorite(id) {
+  const c = state.convs.find((x) => x.id === id);
+  if (!c) return;
+  await api(`/api/conversations/${id}`, { method: 'PATCH', body: { pinned: !c.pinned } });
+  toast(c.pinned ? 'Retirée des favoris' : 'Ajoutée aux favoris');
+  await loadConvs();
+}
+
+function runMenuAction(act) {
+  switch (act) {
+    case 'new': return newChat();
+    case 'incognito': return setIncognito(!state.incognito);
+    case 'settings': return openSettings('general');
+    case 'connexions': return openSettings('connexions');
+    case 'usage': openUsagePop(); return loadUsage();
+    case 'theme': {
+      const next = { auto: 'light', light: 'dark', dark: 'auto' }[state.prefs.theme] || 'auto';
+      state.prefs.theme = next;
+      savePrefs();
+      return toast(`Apparence : ${{ auto: 'auto (selon Windows)', light: 'claire', dark: 'sombre' }[next]}`);
+    }
+    case 'images': return openGallery();
+    case 'skills': return openSkills();
+    case 'palette': return openPalette();
+    case 'help': return openHelp();
+    case 'setup': return openSetup();
+    case 'conv-pin': return toggleFavorite(state.convId);
+    case 'conv-rename': return renameConv(state.convId);
+    case 'conv-fork': return forkConversation();
+    case 'conv-compact': return compact();
+    case 'conv-export': if (state.convId) location.href = `/api/conversations/${state.convId}/export.md`; return;
+    case 'conv-delete': return deleteConv(state.convId);
+    default: return null;
+  }
+}
+
+/* ==========================================================================
+   Page « Conversations » : recherche, favoris, sélection multiple
+   ========================================================================== */
+const convPage = { list: [], sel: new Set(), q: '' };
+
+async function openConversations() {
+  closeNav();
+  closeFloat();
+  showModal('Conversations');
+  convPage.sel.clear();
+  convPage.q = '';
+  mFoot.hidden = true;
+  mBody.innerHTML = `<div class="convs-page">
+    <label class="convs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="convsQ" type="search" placeholder="Rechercher dans tes conversations (titres et contenu)…" autocomplete="off"></label>
+    <div class="convs-bar" id="convsBar"></div>
+    <div id="convsList"></div></div>`;
+  convPage.list = state.convs;
+  renderConvsPage();
+  let timer = null;
+  $('#convsQ').addEventListener('input', (e) => {
+    clearTimeout(timer);
+    convPage.q = e.target.value.trim();
+    timer = setTimeout(async () => {
+      convPage.list = convPage.q ? await api(`/api/conversations?q=${encodeURIComponent(convPage.q)}`).catch(() => []) : state.convs;
+      renderConvsPage();
+    }, 220);
+  });
+  setTimeout(() => $('#convsQ')?.focus(), 30);
+}
+
+function renderConvsPage() {
+  const list = convPage.list;
+  const n = convPage.sel.size;
+  $('#convsBar').innerHTML = n
+    ? `<span>${n} sélectionnée${n > 1 ? 's' : ''}</span><span class="right"><button type="button" class="btn sm" data-cp-none>Annuler</button><button type="button" class="btn sm danger" data-cp-delete>${I.trash}Supprimer</button></span>`
+    : `<span>${list.length} conversation${list.length > 1 ? 's' : ''}${convPage.q ? ` pour « ${esc(convPage.q)} »` : ''}</span>${list.length ? '<span class="right"><button type="button" class="btn sm" data-cp-all>Tout sélectionner</button></span>' : ''}`;
+  $('#convsList').innerHTML = list.length ? list.map((c) => `<div class="convs-row" data-cp-open="${c.id}">
+      <input type="checkbox" data-cp-sel="${c.id}" ${convPage.sel.has(c.id) ? 'checked' : ''} aria-label="Sélectionner">
+      <span class="cr-main"><b>${esc(c.title || 'Sans titre')}</b><small>${c.snippet ? `… ${esc(c.snippet)} …` : `${new Date(c.updatedAt).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}${c.project ? ` · ${esc(c.project.split(/[\\/]/).pop())}` : ''}`}</small></span>
+      <button type="button" class="star ${c.pinned ? 'on' : ''}" data-cp-star="${c.id}" title="${c.pinned ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${I.star}</button>
+    </div>`).join('') : `<p class="note">${convPage.q ? 'Aucune conversation ne correspond.' : 'Aucune conversation pour l’instant.'}</p>`;
+}
+
+mBody.addEventListener('click', async (e) => {
+  if (!$('.convs-page', mBody)) return;
+  const t = e.target;
+  let el;
+  if ((el = t.closest('[data-cp-sel]'))) {
+    e.stopPropagation();
+    if (el.checked) convPage.sel.add(el.dataset.cpSel); else convPage.sel.delete(el.dataset.cpSel);
+    return renderConvsPage();
+  }
+  if ((el = t.closest('[data-cp-star]'))) {
+    e.stopPropagation();
+    await toggleFavorite(el.dataset.cpStar);
+    convPage.list = convPage.q ? convPage.list.map((c) => (c.id === el.dataset.cpStar ? { ...c, pinned: !c.pinned } : c)) : state.convs;
+    return renderConvsPage();
+  }
+  if (t.closest('[data-cp-all]')) { convPage.list.forEach((c) => convPage.sel.add(c.id)); return renderConvsPage(); }
+  if (t.closest('[data-cp-none]')) { convPage.sel.clear(); return renderConvsPage(); }
+  if (t.closest('[data-cp-delete]')) {
+    const ids = [...convPage.sel];
+    if (!confirm(`Supprimer ${ids.length} conversation${ids.length > 1 ? 's' : ''} ? C’est définitif.`)) return;
+    for (const id of ids) await api(`/api/conversations/${id}`, { method: 'DELETE' }).catch(() => {});
+    if (ids.includes(state.convId)) newChat();
+    convPage.sel.clear();
+    await loadConvs();
+    convPage.list = convPage.q ? convPage.list.filter((c) => !ids.includes(c.id)) : state.convs;
+    toast(`${ids.length} conversation${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}`);
+    return renderConvsPage();
+  }
+  if ((el = t.closest('[data-cp-open]'))) { closeModal(); openConv(el.dataset.cpOpen); }
+});
+$('#openConvs').addEventListener('click', openConversations);
+document.addEventListener('click', (e) => { if (e.target.closest('[data-open-convs]')) openConversations(); });
+
+/* ==========================================================================
+   Conversation privée (incognito) : rien n'est enregistré ni mémorisé
+   ========================================================================== */
+state.incognito = false;
+function setIncognito(on) {
+  if (on && state.convId && !state.incognito) newChat();
+  if (!on && state.incognito) { state.incognito = false; newChat(); }
+  state.incognito = !!on;
+  $('#incogBtn').setAttribute('aria-pressed', String(state.incognito));
+  $('#incogBadge').hidden = !state.incognito;
+  document.body.classList.toggle('incognito', state.incognito);
+  $('#convTitle').textContent = state.incognito ? 'Conversation privée' : (state.convId ? $('#convTitle').textContent : 'Nouvelle conversation');
+  if (!state.convId) renderEmpty();
+  toast(state.incognito ? 'Conversation privée : elle ne sera ni enregistrée ni mémorisée.' : 'Conversation privée terminée.');
+}
+$('#incogBtn').addEventListener('click', () => setIncognito(!state.incognito));
+$('#shareBtn').addEventListener('click', () => {
+  if (!state.convId || state.incognito) return toast(state.incognito ? 'Une conversation privée ne s’exporte pas.' : 'Rien à exporter pour l’instant.');
+  location.href = `/api/conversations/${state.convId}/export.md`;
+});
+
+/* ==========================================================================
+   Accueil centré, suggestions, menu Outils, choix de l'IA — comme Claude Desktop
+   ========================================================================== */
+const HOME_CATS = [
+  { id: 'ecrire', label: 'Écrire', icon: I.pen, items: [
+    'Écris un e-mail professionnel et chaleureux pour ',
+    'Reformule ce texte pour qu’il soit plus clair et plus percutant : ',
+    'Rédige une description captivante pour la page de mon jeu Roblox',
+    'Écris un court texte de présentation sur moi pour un portfolio',
+  ] },
+  { id: 'apprendre', label: 'Apprendre', icon: I.cap, items: [
+    'Explique-moi simplement, avec un exemple concret, comment fonctionne ',
+    'Fais-moi un quiz de 5 questions pour vérifier ce que je sais sur ',
+    'Crée-moi un plan d’apprentissage sur 4 semaines pour apprendre ',
+    'Quelle est la différence entre un LocalScript et un Script dans Roblox ?',
+  ] },
+  { id: 'code', label: 'Code', icon: I.code, items: [
+    'Écris un script Luau pour un système de pièces à ramasser dans Roblox',
+    'Explique-moi ce code ligne par ligne : ',
+    'Aide-moi à trouver le bug dans ce code : ',
+    'Fais une maquette interactive de l’écran d’accueil de mon jeu',
+  ] },
+  { id: 'image', label: 'Créer une image', icon: I.image, items: [
+    'Dessine un logo pour mon jeu : ',
+    'Crée une miniature 16:9 pour mon jeu Roblox avec ',
+    'Illustre en style aquarelle ',
+    'Retouche l’image jointe : ',
+  ] },
+  { id: 'chercher', label: 'Rechercher', icon: I.globe, items: [
+    'Cherche les dernières nouveautés de Roblox Studio',
+    'Quelles sont les actualités importantes de la semaine sur ',
+    'Compare les prix et avis actuels de ',
+    'Fais une recherche approfondie sur ',
+  ] },
+  { id: 'choix', label: 'Au choix de Claude', icon: I.spark, items: [
+    'Raconte-moi une anecdote surprenante sur l’histoire des jeux vidéo',
+    'Propose-moi 5 idées de jeux Roblox originales qui pourraient marcher',
+    'Pose-moi une énigme et donne-moi des indices si je bloque',
+    'Fais une table ronde entre les IA : quel est le meilleur moyen d’apprendre à coder ?',
+    'Dessine une ville flottante au coucher du soleil, style Ghibli',
+    'Donne-moi un défi créatif à réaliser en 15 minutes',
+  ] },
+];
+let homeCat = null;
+
+function greeting() {
+  const hour = new Date().getHours();
+  const name = settings().USER_NAME ? `, ${settings().USER_NAME}` : '';
+  if (state.incognito) return 'Conversation privée';
+  if (hour < 5) return `Bonne nuit${name}`;
+  if (hour < 12) return `Bonjour${name}`;
+  if (hour < 18) return `Bon après-midi${name}`;
+  return `Bonsoir${name}`;
+}
+
+function setHome(on) {
+  $('.main').classList.toggle('is-home', !!on);
+  const box = $('#homeChips');
+  box.hidden = !on;
+  if (on) renderHomeChips(); else homeCat = null;
+}
+
+function renderHomeChips() {
+  const box = $('#homeChips');
+  const cat = HOME_CATS.find((c) => c.id === homeCat);
+  const items = cat ? (cat.id === 'choix' ? [...cat.items].sort(() => Math.random() - 0.5).slice(0, 4) : cat.items) : [];
+  box.innerHTML = cat
+    ? `<div class="hc-list"><div class="hc-head">${cat.icon}${esc(cat.label)}<button type="button" data-hc-close title="Fermer">${I.x}</button></div>
+        ${items.map((t) => `<button type="button" class="hc-item" data-hc-prompt="${esc(t)}">${esc(t.replace(/[ :]+$/, '…'))}</button>`).join('')}</div>`
+    : `<div class="hc-row">${HOME_CATS.map((c) => `<button type="button" class="hc-chip" data-hc-cat="${c.id}">${c.icon}${esc(c.label)}</button>`).join('')}</div>`;
+}
+$('#homeChips').addEventListener('click', (e) => {
+  let el;
+  if ((el = e.target.closest('[data-hc-cat]'))) { homeCat = el.dataset.hcCat; return renderHomeChips(); }
+  if (e.target.closest('[data-hc-close]')) { homeCat = null; return renderHomeChips(); }
+  if ((el = e.target.closest('[data-hc-prompt]'))) {
+    input.value = el.dataset.hcPrompt;
+    homeCat = null;
+    renderHomeChips();
+    autoGrow();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event('input'));
+  }
+});
+
+/* ---------- Menu Outils (curseurs) ---------- */
+function toolRow(id, icon, label, { sub = '', on = null, end = '', disabled = false } = {}) {
+  return `<button type="button" class="menu-row ${disabled ? 'disabled' : ''}" data-tool="${id}">${icon}<span class="mr-txt">${label}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${on === null ? (end ? `<span class="mr-end">${end}</span>` : '') : `<span class="tgl ${on ? 'on' : ''}"></span>`}</button>`;
+}
+
+function openToolsPop() {
+  if (state.pop === 'tools') return closePop();
+  closeFloat();
+  const a = av();
+  const web = webAvailable();
+  const deep = state.relay === 'search-deep';
+  const canDeep = !state.project && a.claude && a.perplexity;
+  state.pop = 'tools';
+  pop.classList.add('compact');
+  pop.classList.remove('at-right');
+  $('#toolsBtn').setAttribute('aria-expanded', 'true');
+  pop.innerHTML = `
+    ${toolRow('web', I.globe, 'Recherche web', { sub: !web ? (state.project ? 'Les agents de code ont leurs propres outils web' : 'Connecte Perplexity, OpenRouter ou Claude (compte)') : a.perplexity && state.mode === 'claude' ? 'Avec Perplexity, réponses sourcées' : 'Résultats ajoutés au contexte', on: web && !!state.prefs.web, disabled: !web })}
+    ${toolRow('deep', I.telescope, 'Recherche approfondie', { sub: canDeep ? 'Plusieurs recherches Perplexity, puis une synthèse' : 'Demande Claude et Perplexity', on: deep, disabled: !canDeep })}
+    ${toolRow('effort', I.brain, 'Réflexion approfondie', { sub: effortAvailable() ? EFFORT_INFO[state.prefs.effort]?.desc : 'Pas disponible avec cette IA', end: effortAvailable() ? EFFORT_INFO[state.prefs.effort]?.label : '', disabled: !effortAvailable() })}
+    ${toolRow('style', I.pen, 'Style de réponse', { end: `${(STYLE_INFO[state.prefs.style] || STYLE_INFO.normal).label}${I.chevRight}` })}
+    <div class="menu-sep"></div>
+    ${state.project ? '' : toolRow('relay', I.relay, 'Relais', { sub: 'Faire travailler une IA précise', end: I.chevRight })}
+    ${toolRow('skills', I.book, 'Skills et commandes', { sub: 'Aussi avec « / » dans le champ', end: I.chevRight })}
+    ${toolRow('capture', I.monitor, 'Capture d’écran', { sub: 'Joindre une fenêtre ou un écran' })}`;
+  pop.hidden = false;
+}
+
+pop.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tool]');
+  if (b) {
+    const id = b.dataset.tool;
+    // Le menu se redessine : on évite que le clic, devenu « extérieur », ne le ferme.
+    if (['web', 'deep', 'effort'].includes(id)) e.stopPropagation();
+    if (id === 'web') { toggleWeb(); renderActiveTools(); state.pop = null; return openToolsPop(); }
+    if (id === 'deep') { setRelay(state.relay === 'search-deep' ? null : 'search-deep'); state.pop = null; return openToolsPop(); }
+    if (id === 'effort') {
+      const order = ['normal', 'high', 'max'];
+      state.prefs.effort = order[(order.indexOf(state.prefs.effort) + 1) % order.length];
+      savePrefs();
+      renderActiveTools();
+      state.pop = null;
+      return openToolsPop();
+    }
+    closePop();
+    if (id === 'style') { pop.classList.add('compact'); return openStylePop(); }
+    if (id === 'relay') return openRelayPop();
+    if (id === 'skills') return openSkillPop(true);
+    if (id === 'capture') return captureScreen();
+    return;
+  }
+  const m = e.target.closest('[data-set-mode]');
+  if (m) {
+    e.stopPropagation();
+    setMode(m.dataset.setMode);
+    renderChips();
+    state.pop = null;
+    openModelPop();
+  }
+});
+$('#toolsBtn').addEventListener('click', openToolsPop);
+
+/** Les outils actifs s'affichent en pastilles à côté du bouton, comme dans Claude Desktop. */
+function renderActiveTools() {
+  const box = $('#activeTools');
+  if (!box) return;
+  const pills = [];
+  if (webAvailable() && state.prefs.web) pills.push(['web', I.globe, 'Recherche']);
+  if (effortAvailable() && state.prefs.effort && state.prefs.effort !== 'normal') pills.push(['effort', I.brain, EFFORT_INFO[state.prefs.effort].label]);
+  if (state.prefs.style && state.prefs.style !== 'normal') pills.push(['style', I.pen, STYLE_INFO[state.prefs.style]?.label || '']);
+  box.innerHTML = pills.map(([id, icon, label]) => `<span class="tool-pill" data-pill="${id}">${icon}${esc(label)}<button type="button" class="x" data-pill-off="${id}" title="Désactiver">${I.x}</button></span>`).join('');
+}
+$('#activeTools').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pill-off]');
+  if (!b) return;
+  const id = b.dataset.pillOff;
+  if (id === 'web') state.prefs.web = false;
+  if (id === 'effort') state.prefs.effort = 'normal';
+  if (id === 'style') state.prefs.style = 'normal';
+  savePrefs();
+  renderActiveTools();
+});
+
+/* Un menu ouvert au-dessus du champ ne dépasse jamais le haut de la fenêtre. */
+function fitPop() {
+  if (pop.hidden) return;
+  pop.style.maxHeight = '';
+  pop.style.top = '';
+  pop.style.bottom = '';
+  const r = pop.getBoundingClientRect();
+  if (r.top >= 60) return;
+  const form = $('#composer');
+  // Accueil centré : pas assez de place au-dessus, le menu s'ouvre sous le champ.
+  if ($('.main').classList.contains('is-home') && innerHeight - form.getBoundingClientRect().bottom > r.height + 16) {
+    pop.style.bottom = 'auto';
+    pop.style.top = `${form.offsetTop + form.offsetHeight + 6}px`;
+  } else pop.style.maxHeight = `${Math.max(160, r.height - (60 - r.top))}px`;
+}
+new MutationObserver(() => requestAnimationFrame(fitPop)).observe(pop, { attributes: true, attributeFilter: ['hidden'], childList: true });
+
+/* Avis sur une réponse (pouce levé / baissé), enregistré dans la conversation */
+async function giveFeedback(btn) {
+  const msg = btn.closest('.msg');
+  const index = Number(msg?.dataset.index);
+  if (!state.convId || !Number.isFinite(index)) return;
+  const value = btn.classList.contains('on') ? null : btn.dataset.feedback;
+  let comment = '';
+  if (value === 'down') comment = prompt('Qu’est-ce qui n’allait pas ? (facultatif)') ?? '';
+  try {
+    await api(`/api/conversations/${state.convId}/feedback`, { method: 'POST', body: { index, value, comment } });
+    $$('[data-feedback]', msg).forEach((b) => b.classList.toggle('on', b.dataset.feedback === value));
+    if (state.convMessages[index]) state.convMessages[index].feedback = value ? { value, comment } : undefined;
+    toast(value === 'up' ? 'Merci pour ton avis' : value === 'down' ? 'Avis enregistré' : 'Avis retiré');
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ==========================================================================
+   Artefact : panneau à droite de la conversation (Aperçu / Code), comme Claude
+   ========================================================================== */
+function showArtifact() {
+  const v = $('#designViewer');
+  setArtifactTab('preview');
+  v.hidden = false;
+  document.body.classList.add('with-artifact');
+}
+async function artifactCode() {
+  const v = $('#designViewer');
+  if (v._code != null) return v._code;
+  if (!v.dataset.id) return '';
+  try { v._code = await (await fetch(`/designs/${v.dataset.id}.html`)).text(); } catch { v._code = ''; }
+  return v._code;
+}
+async function setArtifactTab(tab) {
+  const v = $('#designViewer');
+  $$('[data-dv-tab]', v).forEach((b) => b.classList.toggle('on', b.dataset.dvTab === tab));
+  $('.dv-stage', v).hidden = tab !== 'preview';
+  $('.dv-code', v).hidden = tab !== 'code';
+  $('.dv-devices', v).hidden = tab !== 'preview';
+  if (tab === 'code') $('.dv-code code', v).textContent = await artifactCode();
+}
+$('#designViewer').addEventListener('click', async (e) => {
+  let el;
+  if ((el = e.target.closest('[data-dv-tab]'))) return setArtifactTab(el.dataset.dvTab);
+  if (e.target.closest('[data-dv-copy]')) { if (await copy(await artifactCode())) toast('Code copié'); return; }
+  if (e.target.closest('[data-dv-full]')) $('#designViewer').classList.toggle('full');
+});
 
 /* ---------- Démarrage ---------- */
 (async function init() {

@@ -45,10 +45,10 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
   - `@ChatGPT`, `@Grok`, `@Gemini`, `@Perplexity`, `@Image`, `@design` → force l'IA ou le mode voulu
 - **Coder dans un projet** : choisis un dossier (par exemple un jeu Roblox synchronisé avec Rojo). Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement, chacun avec sa propre session. Claude peut aussi confier une sous-tâche à Gemini (`gemini_task`) ou une recherche de documentation à Perplexity.
 - **Les modes d'autorisation de Claude Code** : *Lecture seule*, *Mode plan* (l'IA propose un plan, tu l'approuves avant toute modification), *Demander* (chaque modification est montrée avec son diff), *Accepter les modifs* (fichiers sans confirmation, commandes soumises à ton accord) et *Accès complet*. `Maj+Tab` passe de l'un à l'autre, comme dans Claude Code.
-- **Interface façon Claude Code desktop** :
+- **Les outils de Claude Code** :
   - commandes `/` : `/clear`, `/compact`, `/plan`, `/init`, `/review`, `/security-review`, `/memory`, `/model`, `/effort`, `/diff`, `/export`, `/fork`, `/resume`, `/mcp`, `/help`…
   - `@fichier` pour mentionner un fichier du projet, `!commande` pour lancer une commande dans le dossier (ex. `!git status`)
-  - palette de commandes (`Ctrl Maj P`), recherche dans le contenu des conversations (`Ctrl P`)
+  - palette de commandes (`Ctrl Maj P`), recherche dans le contenu des conversations (`Ctrl K` ou `Ctrl P`)
   - panneau de travail (`Ctrl J`) : liste de tâches de l'IA, fichiers modifiés avec leur diff, état Git et commit, statistiques de la session
   - réflexion de Claude visible, niveau de réflexion réglable (normal, approfondi, maximum), tokens, tours et coût sous chaque réponse
   - pièces jointes (bouton +, glisser-déposer, coller une capture), file d'attente des messages pendant une réponse, modifier et renvoyer un message, dupliquer une conversation, export Markdown
@@ -56,6 +56,16 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
   - notifications et son de fin quand Relais est en arrière-plan
 - **Recherche web avec Perplexity** : Claude lui confie toute question d'actualité ou vérifiable, et cite les sources. Le bouton « recherche web » passe par Perplexity quand il est connecté. Tu peux aussi écrire directement à Perplexity (sélecteur sous le champ de message).
 - **Images avec Gemini (Nano Banana)** : moteur par défaut, avec repli automatique sur ChatGPT ou Grok. Gemini retouche aussi une image existante : joins-la (ou reprends la dernière générée) et décris la modification.
+- **Le design de l'app Claude Desktop** : tons chauds (ivoire le jour, brun-gris la nuit), salutation et réponses en police serif (réglable : Serif, Sans, Système), accueil centré avec des suggestions (Écrire, Apprendre, Code, Créer une image, Rechercher, Au choix de Claude), champ de message épuré : `+` pour joindre, un seul menu **Outils** (recherche web, recherche approfondie, réflexion, style, relais, skills) dont les options actives s'affichent en pastilles, et un bouton unique pour choisir l'IA et son modèle.
+- **Les fonctions de Claude Desktop** :
+  - barre latérale : Nouvelle conversation, Conversations, Projets, Artefacts, Skills ; **Favoris** puis **Récents** ; ton profil en bas, avec l'état des IA et un menu (réglages, connexions, utilisation, apparence, aide)
+  - page **Conversations** : recherche dans les titres et le contenu, favoris, sélection et suppression groupée
+  - **conversation privée** (`Ctrl Maj I`) : ni enregistrée, ni ajoutée à la mémoire
+  - menu du titre : favori, renommer, dupliquer, résumer, exporter, supprimer ; bouton d'export en haut à droite
+  - **artefacts** dans un panneau à droite de la conversation, avec les onglets Aperçu et Code, la copie, le plein écran ; page Artefacts qui réunit designs et images
+  - modifier un message directement dans sa bulle, avis 👍 / 👎 sur chaque réponse
+  - profil : « ce qui te décrit le mieux », pris en compte par les IA
+  - raccourcis : `Ctrl K` chercher, `Ctrl Maj O` nouvelle conversation, `Ctrl B` barre latérale, `Ctrl /` aide
 - **Comme l'app Claude desktop** : styles de réponse (normal, concis, explicatif, formel, créatif), recherche web, réflexion approfondie, **mémoire** entre les conversations (« retiens que… », modifiable dans Réglages → Mémoire), aperçu des blocs HTML, SVG et diagrammes Mermaid, enregistrement d'un bloc de code dans un fichier, capture d'écran en pièce jointe, « Relancer avec » une autre IA, raccourci global `Ctrl+Alt+Espace` pour afficher Relais depuis n'importe où (Relais.exe).
 - **Les IA se parlent, en direct** : quand Claude consulte ChatGPT ou Grok, un faisceau animé relie leurs avatars ; la demande part, la réponse revient, et les IA en conversation s'animent dans la barre du haut.
 - **Voix** : dictée au micro (`Ctrl M`), conversation vocale (clic long sur le micro ou `/talk` : Relais envoie à chaque pause et lit la réponse à voix haute), lecture à voix haute de n'importe quelle réponse. Transcription par la reconnaissance vocale de Windows (hors ligne, gratuite), par l'API OpenAI si une clé est enregistrée (plus précise), ou par le navigateur hors de `Relais.exe`.

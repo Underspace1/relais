@@ -24,6 +24,15 @@ const PORT = Number(getConfig().PORT) || 4321;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 // IA à qui l'on peut écrire directement (Perplexity : recherche web uniquement, pas de projet)
 const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity'];
+// Conversations privées : gardées en mémoire le temps de la session, jamais écrites sur le disque.
+const privateConvs = new Map();
+const findConv = (id) => privateConvs.get(id) || getConversation(id);
+const storeConv = (c) => {
+  if (!c.incognito) return saveConversation(c);
+  c.updatedAt = Date.now();
+  privateConvs.set(c.id, c);
+  if (privateConvs.size > 30) privateConvs.delete(privateConvs.keys().next().value);
+};
 const NAMES = { claude: 'Claude', chatgpt: 'ChatGPT', grok: 'Grok', gemini: 'Gemini', perplexity: 'Perplexity', cursor: 'Cursor' };
 
 const MIME = {
@@ -126,7 +135,7 @@ function makeAsker(convId, send, signal) {
 
 /* ---------- Discussion (flux SSE) ---------- */
 async function handleChat(req, res) {
-  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command, style, web } = await readBody(req);
+  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command, style, web, incognito } = await readBody(req);
   if (!String(text || '').trim()) return json(res, 400, { error: 'Message vide' });
   const attachments = (Array.isArray(attIds) ? attIds : []).slice(0, 12).map(getUpload).filter(Boolean);
   if (!MODES.includes(mode)) return json(res, 400, { error: 'Mode inconnu' });
@@ -136,6 +145,8 @@ async function handleChat(req, res) {
   cfg.responseStyle = typeof style === 'string' ? style : '';
   cfg.webSearch = !!web;
   cfg.effort = effort;
+  // Conversation privée : la mémoire de Relais n'est ni lue ni enrichie.
+  if (incognito) cfg.MEMORY_ENABLED = 'false';
   await connectorStatus(cfg);
   const av = available(cfg);
   // Recherche web : avec Perplexity connecté, c'est lui qui cherche (à la place du plugin web d'OpenRouter).
@@ -162,12 +173,12 @@ async function handleChat(req, res) {
     relay = { id: `image-${effMode}`, label: `Image · ${NAMES[effMode]}`, kind: 'image', engine: effMode };
     direct = true;
   }
-  let conv = conversationId && getConversation(conversationId);
+  let conv = conversationId && findConv(conversationId);
   if (!conv) {
     const t = String(text).trim().replace(/\s+/g, ' ');
     let proj = null;
     if (project) { try { proj = touchProject(project).path; } catch (e) { return json(res, 400, { error: e.message }); } }
-    conv = { id: newId(), title: t.length > 60 ? `${t.slice(0, 57)}…` : t, mode, createdAt: Date.now(), messages: [], project: proj };
+    conv = { id: newId(), title: t.length > 60 ? `${t.slice(0, 57)}…` : t, mode, createdAt: Date.now(), messages: [], project: proj, ...(incognito ? { incognito: true } : {}) };
   } else if (conv.project) {
     try { touchProject(conv.project); } catch { /* dossier déplacé */ }
   }
@@ -192,7 +203,7 @@ async function handleChat(req, res) {
   const controller = new AbortController();
   res.on('close', () => { if (!res.writableEnded) controller.abort(); });
 
-  send('conversation', { id: conv.id, title: conv.title, project: conv.project });
+  send('conversation', { id: conv.id, title: conv.title, project: conv.project, incognito: !!conv.incognito });
   const turn = new Turn(send);
   turn.convId = conv.id;
   const started = Date.now();
@@ -233,7 +244,7 @@ async function handleChat(req, res) {
     const summary = turn.parts.filter((x) => x.type === 'text').map((x) => x.text).join('\n').trim();
     if (summary) { conv.summary = summary; conv.compactFrom = conv.messages.length; conv.sessions = {}; send('compacted', { at: conv.compactFrom }); }
   }
-  saveConversation(conv);
+  storeConv(conv);
   if (error) send('error', { message: error });
   send('done', { ms: Date.now() - started });
   res.end();
@@ -424,9 +435,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="relais-conversations.json"' });
       return res.end(JSON.stringify(all, null, 2));
     }
-    r = p.match(/^\/api\/conversations\/([a-f0-9]{16})\/(truncate|fork|export\.md)$/);
+    r = p.match(/^\/api\/conversations\/([a-f0-9]{16})\/(truncate|fork|export\.md|feedback)$/);
     if (r) {
-      const c = getConversation(r[1]);
+      const c = findConv(r[1]);
       if (!c) return json(res, 404, { error: 'Introuvable' });
       if (r[2] === 'truncate' && m === 'POST') {
         // Modifier un message : on repart de ce point, les sessions des agents sont reconstruites depuis l'historique.
@@ -434,9 +445,20 @@ const server = http.createServer(async (req, res) => {
         c.messages = c.messages.slice(0, at);
         c.sessions = {};
         if (c.compactFrom && c.compactFrom > at) { delete c.summary; delete c.compactFrom; }
-        saveConversation(c);
+        storeConv(c);
         return json(res, 200, { ok: true, count: c.messages.length });
       }
+      if (r[2] === 'feedback' && m === 'POST') {
+        // Avis sur une réponse (pouce levé / baissé), avec un commentaire facultatif
+        const { index, value, comment } = await readBody(req);
+        const msg = c.messages[Number(index)];
+        if (!msg || msg.role !== 'assistant') return json(res, 400, { error: 'Réponse introuvable' });
+        if (value === 'up' || value === 'down') msg.feedback = { value, comment: String(comment || '').slice(0, 2000), at: Date.now() };
+        else delete msg.feedback;
+        storeConv(c);
+        return json(res, 200, { ok: true });
+      }
+      if (c.incognito && r[2] !== 'truncate') return json(res, 400, { error: 'Une conversation privée ne se duplique ni ne s’exporte.' });
       if (r[2] === 'fork' && m === 'POST') {
         const at = Number((await readBody(req)).at);
         const copy = { ...c, id: newId(), title: `${c.title} (copie)`.slice(0, 80), createdAt: Date.now(), messages: Number.isFinite(at) && at > 0 ? c.messages.slice(0, at) : c.messages, sessions: {}, pinned: false };

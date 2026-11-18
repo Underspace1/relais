@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Great+Vibes&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script>
     try {
@@ -15,6 +15,7 @@
       if (p.theme && p.theme !== 'auto') document.documentElement.dataset.theme = p.theme;
       if (p.fontSize) document.documentElement.dataset.size = p.fontSize;
       if (p.width) document.documentElement.dataset.width = p.width;
+      document.documentElement.dataset.chatFont = p.chatFont || 'serif';
       if (p.splash === false || sessionStorage.getItem('relais-splash')) document.documentElement.classList.add('no-splash');
     } catch {}
   </script>
@@ -59,56 +60,34 @@
           <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg-ink" gradientUnits="userSpaceOnUse" x1="20" y1="50" x2="44" y2="18"><stop offset="0" stop-color="#e07a4f"/><stop offset=".25" stop-color="#e07a4f"/><stop offset=".75" stop-color="#22b083"/><stop offset="1" stop-color="#7fd9b8"/></linearGradient></defs><rect width="64" height="64" rx="15" class="logo-bg"/><g transform="translate(-0.5 -1.5)"><path d="M21 49V22.5Q21 16 27.5 16H32.5A11 11 0 0 1 32.5 38H27L44 49" fill="none" stroke="url(#lg-ink)" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/><g class="logo-ring" stroke-width="2.4"><circle cx="21" cy="49" r="5" fill="#e07a4f"/><circle cx="43.5" cy="27" r="5" fill="#22b083"/><circle cx="44" cy="49" r="5" fill="#ecebe6"/></g></g></svg>
           <span class="brand-name">Relais</span>
         </div>
-        <button class="icon-btn" id="newChatIcon" type="button" aria-label="Nouvelle conversation" title="Nouvelle conversation (Ctrl K)">
-          <svg viewBox="0 0 24 24"><path d="M12 20h8M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        <button class="icon-btn" id="sideClose" type="button" aria-label="Masquer la barre latérale" title="Masquer la barre latérale (Ctrl B)">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg>
         </button>
       </div>
 
-      <label class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="search" type="search" placeholder="Rechercher" autocomplete="off">
-        <kbd>Ctrl K</kbd>
-      </label>
-
       <nav class="side-nav">
-        <button class="nav-item" id="newChat" type="button">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Nouvelle conversation</span>
+        <button class="nav-item new-chat" id="newChat" type="button" title="Nouvelle conversation (Ctrl Maj O)">
+          <span class="plus-badge"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></span><span>Nouvelle conversation</span>
+        </button>
+        <button class="nav-item" id="openConvs" type="button" title="Toutes les conversations (Ctrl K pour chercher)">
+          <svg viewBox="0 0 24 24"><path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4.5 20l1-4A7.5 7.5 0 1 1 20 12.5z"/></svg><span>Conversations</span>
         </button>
         <button class="nav-item" id="openProjects" type="button">
           <svg viewBox="0 0 24 24"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg><span>Projets</span>
+        </button>
+        <button class="nav-item" id="openDesigns" type="button" title="Designs et images créés dans Relais">
+          <svg viewBox="0 0 24 24"><path d="M12 3.5l7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7z"/><path d="M4.5 7.7L12 12l7.5-4.3M12 12v8.5"/></svg><span>Artefacts</span>
         </button>
         <button class="nav-item" id="openSkills" type="button">
           <svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg>
           <span>Skills</span><span class="count" id="skillCount"></span>
         </button>
-        <button class="nav-item" id="openGallery" type="button">
-          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8 8.5"/></svg>
-          <span>Images</span>
-        </button>
-        <button class="nav-item" id="openDesigns" type="button">
-          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9h17M9 9v10.5"/></svg>
-          <span>Designs</span>
-        </button>
-        <button class="nav-item" id="openPalette" type="button">
-          <svg viewBox="0 0 24 24"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
-          <span>Commandes</span><kbd>Ctrl ⇧ P</kbd>
-        </button>
       </nav>
-
-      <div class="conv-filter seg" id="convFilter" role="tablist" aria-label="Filtrer les conversations">
-        <button type="button" data-conv-filter="all" class="on">Toutes</button>
-        <button type="button" data-conv-filter="project">Ce projet</button>
-        <button type="button" data-conv-filter="chat">Discussions</button>
-      </div>
 
       <div class="conv-list" id="convList" aria-label="Conversations"></div>
 
       <div class="side-foot">
-        <button class="conn-card" id="connCard" type="button" data-open-settings="connexions"></button>
-        <button class="nav-item" id="openSettings" type="button" data-open-settings="general">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-          <span>Réglages</span>
-        </button>
+        <button class="profile-btn" id="profileBtn" type="button" aria-haspopup="menu" title="Profil, connexions et réglages"></button>
       </div>
     </aside>
 
@@ -122,10 +101,18 @@
         </button>
         <button class="project-btn" id="projectBtn" type="button" title="Choisir le projet sur lequel les IA travaillent"></button>
         <button class="branch-btn" id="branchBtn" type="button" title="Git : état du projet" hidden></button>
-        <h1 class="conv-title" id="convTitle">Nouvelle conversation</h1>
-        <div class="top-agents" id="topAgents"></div>
-        <button class="icon-btn" id="convMenuBtn" type="button" aria-label="Actions de la conversation" title="Actions de la conversation">
-          <svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg>
+        <button class="title-btn" id="convMenuBtn" type="button" aria-haspopup="menu" title="Actions de la conversation">
+          <span class="incog-badge" id="incogBadge" hidden title="Conversation privée"><svg viewBox="0 0 24 24"><path d="M4 11h16M6.5 11l1.5-5.5h8l1.5 5.5"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/><path d="M10.6 16h2.8"/></svg></span>
+          <h1 class="conv-title" id="convTitle">Nouvelle conversation</h1>
+          <svg class="chev-down" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+        </button>
+        <span class="spacer"></span>
+        <div class="top-agents" id="topAgents" aria-hidden="true"></div>
+        <button class="icon-btn" id="incogBtn" type="button" aria-pressed="false" title="Conversation privée : rien n’est enregistré ni mémorisé (Ctrl Maj I)">
+          <svg viewBox="0 0 24 24"><path d="M4 11h16M6.5 11l1.5-5.5h8l1.5 5.5"/><circle cx="8" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/><path d="M10.6 16h2.8"/></svg>
+        </button>
+        <button class="icon-btn" id="shareBtn" type="button" title="Exporter la conversation en Markdown (Ctrl Maj E)">
+          <svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 13v5.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V13"/></svg>
         </button>
         <button class="icon-btn" id="panelToggle" type="button" aria-label="Panneau de travail" title="Panneau : tâches, modifications, Git (Ctrl J)">
           <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M14.5 4.5v15"/></svg>
@@ -152,44 +139,47 @@
           </div>
           <textarea id="input" rows="1" placeholder="Écris à Claude…" aria-label="Message"></textarea>
           <div class="toolbar">
-            <button type="button" class="tool-btn icon-only" id="attachBtn" title="Joindre des fichiers ou des images (glisser-déposer, Ctrl V)" aria-label="Joindre">
+            <button type="button" class="tool-btn icon-only" id="attachBtn" title="Joindre des fichiers, une capture d’écran (glisser-déposer, Ctrl V)" aria-label="Joindre">
               <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </button>
             <input type="file" id="fileInput" multiple hidden>
-            <button type="button" class="tool-btn" id="relayBtn" title="Relais : faire travailler une autre IA">
-              <svg viewBox="0 0 24 24"><path d="M5 12h4l2-5 2 10 2-5h4"/></svg><span>Relais</span>
-            </button>
-            <button type="button" class="tool-btn" id="skillBtn" title="Commandes et skills (/)">
-              <svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg><span>Skill</span>
+            <button type="button" class="tool-btn icon-only" id="toolsBtn" title="Outils : recherche, réflexion, style, relais, skills" aria-label="Outils" aria-haspopup="menu">
+              <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
             </button>
             <button type="button" class="tool-btn perm-btn" id="permBtn" hidden></button>
-            <button type="button" class="tool-btn effort-btn" id="effortBtn" hidden></button>
-            <button type="button" class="tool-btn style-btn" id="styleBtn" title="Style de réponse"></button>
-            <button type="button" class="tool-btn icon-only web-btn" id="webBtn" title="Recherche web" aria-pressed="false" hidden>
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5s1.1-5.9 3.6-8.5z"/></svg>
-            </button>
+            <span class="active-tools" id="activeTools"></span>
+            <!-- Commandes d'origine, pilotées par le menu Outils (gardées pour les raccourcis et l'état) -->
+            <span class="legacy-tools" aria-hidden="true">
+              <button type="button" class="tool-btn" id="relayBtn" tabindex="-1"><span>Relais</span></button>
+              <button type="button" class="tool-btn" id="skillBtn" tabindex="-1"><span>Skill</span></button>
+              <button type="button" class="tool-btn effort-btn" id="effortBtn" tabindex="-1" hidden></button>
+              <button type="button" class="tool-btn style-btn" id="styleBtn" tabindex="-1"></button>
+              <button type="button" class="tool-btn icon-only web-btn" id="webBtn" tabindex="-1" aria-pressed="false" hidden></button>
+              <span class="segmented" id="modeSwitch" role="radiogroup">
+                <button type="button" role="radio" data-mode="claude" aria-checked="true"><span>Claude</span></button>
+                <button type="button" role="radio" data-mode="chatgpt" aria-checked="false"><span>ChatGPT</span></button>
+                <button type="button" role="radio" data-mode="grok" aria-checked="false"><span>Grok</span></button>
+                <button type="button" role="radio" data-mode="gemini" aria-checked="false"><span>Gemini</span></button>
+                <button type="button" role="radio" data-mode="perplexity" aria-checked="false"><span>Perplexity</span></button>
+              </span>
+            </span>
             <span class="spacer"></span>
-            <button type="button" class="tool-btn model-btn" id="modelBtn" title="Choisir le modèle"></button>
+            <button type="button" class="tool-btn model-btn" id="modelBtn" title="Choisir l’IA et le modèle" aria-haspopup="menu"></button>
             <button type="button" class="tool-btn icon-only mic-btn" id="micBtn" title="Dicter (Ctrl M) · clic long : conversation vocale" aria-label="Dicter">
               <svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg>
             </button>
-            <div class="segmented" id="modeSwitch" role="radiogroup" aria-label="Destinataire">
-              <button type="button" role="radio" data-mode="claude" aria-checked="true"><i class="dot" data-agent="claude"></i><span>Claude</span></button>
-              <button type="button" role="radio" data-mode="chatgpt" aria-checked="false"><i class="dot" data-agent="chatgpt"></i><span>ChatGPT</span></button>
-              <button type="button" role="radio" data-mode="grok" aria-checked="false"><i class="dot" data-agent="grok"></i><span>Grok</span></button>
-              <button type="button" role="radio" data-mode="gemini" aria-checked="false"><i class="dot" data-agent="gemini"></i><span>Gemini</span></button>
-              <button type="button" role="radio" data-mode="perplexity" aria-checked="false" title="Recherche web avec sources"><i class="dot" data-agent="perplexity"></i><span>Perplexity</span></button>
-            </div>
             <button type="submit" class="send-btn" id="sendBtn" aria-label="Envoyer">
               <svg viewBox="0 0 24 24" class="i-send"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
               <svg viewBox="0 0 24 24" class="i-stop"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
             </button>
           </div>
         </form>
+        <div class="home-chips" id="homeChips" hidden></div>
         <div class="usage-row">
           <button type="button" class="usage-bar" id="usageBar" title="Utilisation de tes abonnements"></button>
           <div class="statusline" id="statusline"></div>
           <p class="composer-hint" id="hint"></p>
+          <p class="disclaimer" id="disclaimer">Les IA peuvent se tromper. Vérifie les réponses importantes.</p>
         </div>
       </footer>
     </main>
@@ -246,11 +236,18 @@
         <button type="button" data-dv-device="tablet" title="Tablette"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/></svg></button>
         <button type="button" data-dv-device="phone" title="Mobile"><svg viewBox="0 0 24 24"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M11 18h2"/></svg></button>
       </div>
+      <div class="seg dv-tabs">
+        <button type="button" data-dv-tab="preview" class="on">Aperçu</button>
+        <button type="button" data-dv-tab="code">Code</button>
+      </div>
       <span class="spacer"></span>
+      <button type="button" class="icon-btn" data-dv-copy title="Copier le code"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg></button>
+      <button type="button" class="icon-btn" data-dv-full title="Plein écran / panneau"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button type="button" class="icon-btn" data-dv-reload title="Recharger"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.6M20 4v4.6h-4.6"/></svg></button>
       <a class="icon-btn" data-dv-download href="#" download title="Télécharger le HTML"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></a>
       <button type="button" class="icon-btn" data-dv-close title="Fermer (Échap)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
+    <pre class="dv-code" hidden><code></code></pre>
     <div class="dv-stage"><iframe sandbox="allow-scripts allow-forms allow-popups allow-modals" title="Aperçu du design"></iframe></div>
   </div>
 
