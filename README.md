@@ -53,6 +53,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 - **Actions « Relais »** : image, icône de jeu, miniature 16:9, table ronde entre IA, script Luau…
 - **Skills** : des fichiers Markdown que Claude charge tout seul quand ils servent, plus l'import de skills depuis ton compte Claude ou depuis GitHub.
 - **Designs** : des maquettes HTML interactives avec aperçu en direct, des versions successives et l'export vers ton projet.
+- **Premier lancement guidé** : une courte animation (le « R » de Relais se trace, les trois IA s'allument, « Relais » s'écrit en signature), puis un assistant de configuration en six étapes : prénom et apparence, connexion des comptes, préférences de travail, voix, premier projet. Il se relance avec `/setup` ou depuis Réglages → Général.
 - **Application Windows** : une fenêtre WebView2 sans bordure qui reste active dans la zone de notification quand tu la fermes.
 - **Portable** : Node, les outils, les connexions et les données vivent dans le dossier.
 

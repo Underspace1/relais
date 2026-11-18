@@ -343,7 +343,7 @@ function renderProjectEmpty() {
 function renderEmpty() {
   if (state.project) return renderProjectEmpty();
   const hour = new Date().getHours();
-  const hi = hour < 6 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir';
+  const hi = `${hour < 6 ? 'Bonne nuit' : hour < 18 ? 'Bonjour' : 'Bonsoir'}${settings().USER_NAME ? ` ${esc(settings().USER_NAME)}` : ''}`;
   const a = av();
   const featured = ['image-chatgpt', 'design', 'design-roblox-ui', 'roblox-icon', 'debate', 'code-project'].map((id) => relays().find((r) => r.id === id)).filter(Boolean);
   inner.innerHTML = '';
@@ -1085,6 +1085,7 @@ const COMMANDS = [
   { name: 'skills', desc: 'Gérer les skills', run: () => openSkills() },
   { name: 'project', alias: ['projets', 'cd'], desc: 'Ouvrir un projet (dossier)', run: () => openProjects() },
   { name: 'settings', alias: ['config'], desc: 'Réglages', run: () => openSettings() },
+  { name: 'setup', alias: ['config-guide', 'bienvenue'], desc: 'Assistant de configuration (comptes, préférences, voix)', run: () => openSetup() },
   { name: 'help', alias: ['raccourcis'], desc: 'Raccourcis clavier et commandes', run: () => openHelp() },
 ];
 const visibleCommands = () => COMMANDS.filter((c) => !c.when || c.when());
@@ -1279,6 +1280,7 @@ function showModal(title, { nav = null } = {}) {
   scrim.hidden = false;
 }
 function closeModal() {
+  if (wiz.active) finishWizard({ silent: true });
   modal.hidden = true;
   if (!$('#app').classList.contains('nav-open')) scrim.hidden = true;
   stopPolling();
@@ -1335,6 +1337,8 @@ function renderTab() {
         ${row('Thème', '', prefSeg('theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
         ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
         ${row('Largeur du fil', '', prefSeg('width', [['normal', 'Normale'], ['wide', 'Large'], ['full', 'Pleine']]))}
+        ${row('Animation au démarrage', 'Le logo qui se dessine et la signature « Relais ».', `<input type="checkbox" class="switch" data-pref-bool="splash" ${state.prefs.splash !== false ? 'checked' : ''}>`)}
+        ${row('Assistant de configuration', 'Reprendre la configuration guidée : comptes, préférences, voix, projet.', '<button type="button" class="btn sm" data-open-setup>Relancer</button>')}
         ${row('Étapes dépliées', 'Afficher le détail de chaque action par défaut.', `<input type="checkbox" class="switch" data-pref-bool="stepsOpen" ${state.prefs.stepsOpen ? 'checked' : ''}>`)}
         ${row('Afficher la réflexion', 'Montrer les blocs « Réflexion » de Claude et Codex (repliés).', `<input type="checkbox" class="switch" data-pref-bool="showThinking" ${state.prefs.showThinking ? 'checked' : ''}>`)}
         ${row('Panneau de travail ouvert', 'Tâches, fichiers modifiés et Git à droite (Ctrl J).', `<input type="checkbox" class="switch" data-pref-bool="panel" ${state.prefs.panel ? 'checked' : ''}>`)}
@@ -1349,6 +1353,8 @@ function renderTab() {
         ${row('Envoyer avec', '', prefSeg('sendKey', [['enter', 'Entrée'], ['ctrl', 'Ctrl + Entrée']]))}
         ${row('Langue des réponses', '', sel('RESPONSE_LANGUAGE', [['auto', 'Comme mon message'], ['fr', 'Français'], ['en', 'Anglais']], s.RESPONSE_LANGUAGE))}
       </div>
+      <div class="group-title">Toi</div>
+      <div class="group">${row('Ton prénom', 'Pour que les IA s’adressent à toi.', inp('USER_NAME', s.USER_NAME, 'Ton prénom', false))}</div>
       <div class="group-title">Instructions personnalisées</div>
       <div class="group"><div class="row stack">
         <div class="row-text"><b>Ce que les IA doivent savoir sur toi</b><span>Ajouté à chaque conversation. Ex. « Je crée un jeu Roblox d’obby, je débute en Luau, réponds simplement. »</span></div>
@@ -1516,6 +1522,7 @@ function renderConnexions() {
   }).join('')}`;
   mFoot.hidden = false;
   mFoot.innerHTML = `<span class="note">La connexion se fait depuis Relais, avec une simple confirmation dans ton navigateur.</span><button type="button" class="btn sm right" data-refresh-conn>${I.retry}Actualiser</button>`;
+  if (wiz.active) renderWizardFoot();
   const running = CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running);
   if (running) startPolling(1500);
 }
@@ -1534,7 +1541,7 @@ function startPolling(ms, duration = 10 * 60 * 1000) {
       const lg = state.connectors?.[c.id]?.login;
       if (before[c.id] && lg && !lg.running) toast(lg.ok ? `Connecté à ${c.name}` : `Connexion ${c.name} interrompue`, !lg.ok);
     }
-    if (settingsTab === 'connexions') renderConnexions();
+    if (settingsTab === 'connexions' && (!wiz.active || wiz.step === 'ia')) renderConnexions();
     const busy = CONNECTORS.some((c) => state.connectors?.[c.id]?.job?.running || state.connectors?.[c.id]?.login?.running);
     if (!busy) stopPolling();
   }, ms);
@@ -1863,7 +1870,7 @@ mBody.addEventListener('change', (e) => {
   if (t.dataset.k) {
     const v = t.type === 'checkbox' ? String(t.checked) : t.value;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveSettings({ [t.dataset.k]: v }), 150);
+    saveTimer = setTimeout(() => saveSettings({ [t.dataset.k]: v }, wiz.active), 150);
   }
   if (t.dataset.prefBool) {
     state.prefs[t.dataset.prefBool] = t.checked;
@@ -1872,7 +1879,7 @@ mBody.addEventListener('change', (e) => {
     if (t.dataset.prefBool === 'showThinking') $$('.thinking-step').forEach((x) => x.classList.toggle('is-hidden', !t.checked));
     if (t.dataset.prefBool === 'notify' && t.checked && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
   }
-  if (t.dataset.prefSel) { state.prefs[t.dataset.prefSel] = t.type === 'range' ? Number(t.value) : t.value; savePrefs(); if (t.dataset.prefSel === 'voiceEngine') renderTab(); }
+  if (t.dataset.prefSel) { state.prefs[t.dataset.prefSel] = t.type === 'range' ? Number(t.value) : t.value; savePrefs(); if (t.dataset.prefSel === 'voiceEngine') rerender(); }
 });
 
 /* ---------- Clics ---------- */
@@ -1898,7 +1905,7 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-conv]'))) return openConv(el.dataset.conv);
   if ((el = t.closest('[data-open-settings]'))) return openSettings(el.dataset.openSettings || 'general');
   if ((el = t.closest('[data-tab]'))) { settingsTab = el.dataset.tab; renderTab(); if (settingsTab === 'connexions') loadConnectors(true).then(() => settingsTab === 'connexions' && renderConnexions()); return; }
-  if ((el = t.closest('[data-pref]'))) { state.prefs[el.dataset.pref] = el.dataset.v; if (el.dataset.pref === 'perm') state.perm = el.dataset.v; savePrefs(); return renderTab(); }
+  if ((el = t.closest('[data-pref]'))) { state.prefs[el.dataset.pref] = el.dataset.v; if (el.dataset.pref === 'perm') state.perm = el.dataset.v; savePrefs(); return rerender(); }
   if ((el = t.closest('[data-goto-projects]'))) return openProjects();
   if ((el = t.closest('[data-auth]'))) { await saveSettings({ [el.dataset.auth]: el.dataset.v }, true); return renderConnexions(); }
   if ((el = t.closest('[data-save-key]'))) {
@@ -1992,6 +1999,15 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-test-tts]'))) return speak('Bonjour ! Voici la voix que Relais utilisera pour lire les réponses.', { lang: state.prefs.voiceLang, voice: state.prefs.voiceName, rate: Number(state.prefs.voiceRate) || 1 });
   if ((el = t.closest('[data-test-mic]'))) { closeModal(); return startVoice(); }
   if ((el = t.closest('[data-palette-item]'))) return runPaletteItem(Number(el.dataset.paletteItem));
+  if ((el = t.closest('[data-open-setup]'))) return openSetup();
+  if ((el = t.closest('[data-wiz]'))) return goWizard(el.dataset.wiz);
+  if ((el = t.closest('[data-wiz-next]'))) return wizardNext();
+  if ((el = t.closest('[data-wiz-back]'))) return wizardBack();
+  if ((el = t.closest('[data-wiz-finish]'))) return finishWizard();
+  if ((el = t.closest('[data-wiz-agent]'))) { state.prefs.defaultAgent = el.dataset.wizAgent; savePrefs(); setMode(el.dataset.wizAgent); return renderWizard(); }
+  if ((el = t.closest('[data-wiz-pick]'))) return wizardPickFolder(el);
+  if ((el = t.closest('[data-wiz-path]'))) return wizardPath();
+  if ((el = t.closest('[data-wiz-noproject]'))) { wiz.project = null; return wizardNext(); }
   if ((el = t.closest('[data-code-starter]'))) {
     const s = CODE_STARTERS[Number(el.dataset.codeStarter)];
     input.value = s.p;
@@ -3014,14 +3030,232 @@ function openHelp() {
   mBody.innerHTML = helpHtml();
 }
 
+/* ==========================================================================
+   Animation d'ouverture
+   ========================================================================== */
+const splash = $('#splash');
+const SPLASH_MS = 3900;
+let splashDone;
+const splashFinished = new Promise((r) => { splashDone = r; });
+
+function hideSplash() {
+  if (!splash || splash.classList.contains('out')) return;
+  splash.classList.add('out');
+  try { sessionStorage.setItem('relais-splash', '1'); } catch { /* indisponible */ }
+  setTimeout(() => { splash.remove(); splashDone(); }, 500);
+}
+
+function startSplash() {
+  if (!splash || document.documentElement.classList.contains('no-splash')) { splash?.remove(); splashDone(); return; }
+  setTimeout(hideSplash, SPLASH_MS);
+  splash.addEventListener('click', hideSplash);
+  document.addEventListener('keydown', function skip(e) { if (!splash.isConnected) return document.removeEventListener('keydown', skip, true); if (['Escape', 'Enter', ' '].includes(e.key)) { e.preventDefault(); e.stopPropagation(); hideSplash(); } }, true);
+}
+startSplash();
+
+/* ==========================================================================
+   Assistant de configuration (premier lancement, /setup)
+   ========================================================================== */
+const LOGO_SVG = $('.brand .logo')?.outerHTML.replace(/lg-ink/g, 'wz-ink') || '';
+const WIZ_STEPS = [
+  ['bienvenue', 'Bienvenue'],
+  ['ia', 'Connexions'],
+  ['travail', 'Préférences'],
+  ['voix', 'Voix'],
+  ['projet', 'Projet'],
+  ['fin', 'C’est prêt'],
+];
+const wiz = { active: false, step: 'bienvenue', seen: new Set(), project: null };
+
+async function openSetup() {
+  closePop();
+  closeNav();
+  closePalette?.();
+  wiz.active = true;
+  wiz.seen = new Set();
+  await loadStatus();
+  goWizard('bienvenue');
+  loadConnectors(true).then(() => { if (wiz.active && wiz.step === 'ia') renderWizard(); if (wiz.active && wiz.step === 'fin') renderWizard(); });
+}
+
+function goWizard(step) {
+  wiz.step = step;
+  wiz.seen.add(step);
+  settingsTab = step === 'ia' ? 'connexions' : 'wizard';
+  const i = WIZ_STEPS.findIndex((x) => x[0] === step);
+  showModal(WIZ_STEPS[i][1], {
+    nav: `<div class="nav-title">Configuration</div>${WIZ_STEPS.map(([id, label], k) => `<button type="button" data-wiz="${id}" class="${id === step ? 'active' : ''} ${wiz.seen.has(id) && id !== step ? 'done' : ''}"><span class="wiz-nav-step"><span class="wiz-num">${wiz.seen.has(id) && id !== step ? '✓' : k + 1}</span>${label}</span></button>`).join('')}`,
+  });
+  renderWizard();
+  mBody.scrollTop = 0;
+}
+
+function wizardNext() {
+  const i = WIZ_STEPS.findIndex((x) => x[0] === wiz.step);
+  if (i < WIZ_STEPS.length - 1) goWizard(WIZ_STEPS[i + 1][0]);
+}
+function wizardBack() {
+  const i = WIZ_STEPS.findIndex((x) => x[0] === wiz.step);
+  if (i > 0) goWizard(WIZ_STEPS[i - 1][0]);
+}
+const rerender = () => (wiz.active ? renderWizard() : renderTab());
+
+function renderWizardFoot() {
+  const i = WIZ_STEPS.findIndex((x) => x[0] === wiz.step);
+  const last = i === WIZ_STEPS.length - 1;
+  mFoot.hidden = false;
+  mFoot.innerHTML = `${i > 0 ? `<button type="button" class="btn" data-wiz-back>${I.back}Retour</button>` : ''}
+    <span class="note right">${i + 1} / ${WIZ_STEPS.length}</span>
+    ${last ? `<button type="button" class="btn primary" data-wiz-finish>Commencer</button>`
+      : `${['ia', 'voix', 'projet'].includes(wiz.step) ? '<button type="button" class="btn" data-wiz-next>Plus tard</button>' : ''}<button type="button" class="btn primary" data-wiz-next>Continuer${I.arrow}</button>`}`;
+}
+
+function renderWizard() {
+  if (!wiz.active) return;
+  const s = settings();
+  const step = wiz.step;
+  const i = WIZ_STEPS.findIndex((x) => x[0] === step);
+  const progress = `<div class="wiz-progress"><i style="width:${Math.round(((i + 1) / WIZ_STEPS.length) * 100)}%"></i></div>`;
+  $$('#modalNav [data-wiz]').forEach((b) => b.classList.toggle('active', b.dataset.wiz === step));
+
+  if (step === 'bienvenue') {
+    mBody.innerHTML = `${progress}
+      <div class="wiz-hero">${LOGO_SVG}<div><h3>Bienvenue dans Relais</h3><p>Claude, ChatGPT et Grok dans une seule fenêtre, avec tes propres comptes. Quelques réglages et on démarre : deux minutes, tout se change ensuite dans Réglages.</p></div></div>
+      <div class="group">
+        ${row('Ton prénom', 'Pour que les IA s’adressent à toi.', inp('USER_NAME', s.USER_NAME, 'Ton prénom', false))}
+        ${row('Langue des réponses', '', sel('RESPONSE_LANGUAGE', [['auto', 'Comme mon message'], ['fr', 'Français'], ['en', 'Anglais']], s.RESPONSE_LANGUAGE))}
+        ${row('Thème', '', prefSeg('theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
+        ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
+      </div>`;
+  }
+
+  if (step === 'ia') {
+    renderConnexions();
+    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. <b>Mon compte</b> utilise ton abonnement (Claude Pro/Max, ChatGPT, SuperGrok) : clique <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer. <b>Clé API</b> : colle une clé, facturée à l’usage.</p>`);
+    return renderWizardFoot();
+  }
+
+  if (step === 'travail') {
+    const agent = state.prefs.defaultAgent || 'claude';
+    const choice = (id, title, desc) => `<button type="button" class="wiz-choice ${agent === id ? 'on' : ''}" data-wiz-agent="${id}"><b><i class="dot" data-agent="${id}"></i>${title}</b><span>${desc}</span></button>`;
+    mBody.innerHTML = `${progress}
+      <div class="group-title">À qui écris-tu par défaut ?</div>
+      <div class="wiz-choices">
+        ${choice('claude', 'Claude', 'Recommandé. Le chef d’orchestre : il répond et fait travailler les autres IA quand il faut.')}
+        ${choice('chatgpt', 'ChatGPT', 'Conversation directe avec ChatGPT (et Codex dans un projet).')}
+        ${choice('grok', 'Grok', 'Conversation directe avec Grok (et Grok Build dans un projet).')}
+      </div>
+      <div class="group-title">Quand une IA travaille dans ton projet</div>
+      <div class="group">
+        ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
+        ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
+      </div>
+      <div class="group-title">Images</div>
+      <div class="group">${row('Moteur par défaut', 'Quand tu demandes un logo, une icône, une illustration…', sel('IMAGE_ENGINE', [['chatgpt', 'ChatGPT'], ['grok', 'Grok (clé API xAI)']], s.IMAGE_ENGINE))}</div>
+      <div class="group-title">Ce que les IA doivent savoir sur toi</div>
+      <div class="group"><div class="row stack"><textarea class="textarea" data-k="CUSTOM_INSTRUCTIONS" placeholder="Ex. « Je crée un jeu Roblox d’obby, je débute en Luau, explique simplement. »">${esc(s.CUSTOM_INSTRUCTIONS)}</textarea></div></div>
+      <div class="group-title">Notifications</div>
+      <div class="group">
+        ${row('Me prévenir quand une réponse est prête', 'Quand Relais est en arrière-plan.', `<input type="checkbox" class="switch" data-pref-bool="notify" ${state.prefs.notify ? 'checked' : ''}>`)}
+        ${row('Son de fin', '', `<input type="checkbox" class="switch" data-pref-bool="sound" ${state.prefs.sound ? 'checked' : ''}>`)}
+      </div>`;
+  }
+
+  if (step === 'voix') {
+    const p = state.prefs;
+    const vs = state.status?.voice || {};
+    const ps = (k, opts) => `<select class="select" data-pref-sel="${k}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    mBody.innerHTML = `${progress}
+      <div class="wiz-hero"><span class="design-ico big">${I.mic}</span><div><h3>Parle à tes IA</h3><p>Ctrl M pour dicter, clic long sur le micro pour une conversation vocale où la réponse est lue à voix haute. ${vs.openai ? 'Transcription : API OpenAI (ta clé est enregistrée).' : vs.windows ? 'Transcription : reconnaissance vocale de Windows, hors ligne. Une clé API OpenAI la rend plus précise.' : 'Transcription : navigateur, ou clé API OpenAI.'}</p></div></div>
+      <div class="group">
+        ${row('Langue parlée', '', ps('voiceLang', [['fr-FR', 'Français (France)'], ['fr-CA', 'Français (Canada)'], ['fr-BE', 'Français (Belgique)'], ['en-US', 'Anglais (US)'], ['en-GB', 'Anglais (UK)'], ['es-ES', 'Espagnol'], ['de-DE', 'Allemand'], ['it-IT', 'Italien']]))}
+        ${row('Envoyer dès que je m’arrête de parler', '', `<input type="checkbox" class="switch" data-pref-bool="voiceAutoSend" ${p.voiceAutoSend ? 'checked' : ''}>`)}
+        ${row('Lire chaque réponse à voix haute', '', `<input type="checkbox" class="switch" data-pref-bool="voiceRead" ${p.voiceRead ? 'checked' : ''}>`)}
+        ${row('Tester', 'Écoute la voix utilisée pour lire les réponses.', `<button type="button" class="btn sm" data-test-tts>${I.speaker}Écouter</button>`)}
+      </div>
+      <p class="note">Plus de réglages (moteur, voix, vitesse) dans Réglages → Voix.</p>`;
+  }
+
+  if (step === 'projet') {
+    const pj = wiz.project;
+    mBody.innerHTML = `${progress}
+      <div class="wiz-hero"><span class="design-ico big">${FOLDER_ICON}</span><div><h3>Un projet sur lequel travailler ?</h3><p>Choisis le dossier de ton jeu ou de ton site : Claude Code, Codex ou Grok Build y liront et modifieront les fichiers, selon l’autorisation choisie. Tu peux aussi rester en discussion libre.</p></div></div>
+      ${pj ? `<div class="proj-card">${FOLDER_ICON}<div><b>${esc(pj.name)}</b><span>${esc(pj.path)}</span></div><span class="pill ok">${esc(pj.type || 'Dossier')}</span></div>` : ''}
+      <div class="proj-open">
+        <button type="button" class="btn ${pj ? '' : 'primary'}" data-wiz-pick>${FOLDER_ICON}${pj ? 'Choisir un autre dossier…' : 'Choisir un dossier…'}</button>
+        <div class="login-row" style="flex:1"><input class="input mono" id="wizPath" placeholder="ou colle un chemin : C:\\Users\\toi\\mon-jeu" spellcheck="false"><button type="button" class="btn" data-wiz-path>Ouvrir</button></div>
+      </div>
+      <p class="note">Conseil : utilise Git dans ton projet pour pouvoir annuler n’importe quelle modification (onglet Git du panneau de travail).</p>`;
+  }
+
+  if (step === 'fin') {
+    const a = av();
+    const line = (ok, label, hint) => `<div><span class="${ok ? 'ok' : 'no'}">${ok ? I.check : I.x}</span>${label}<em>${esc(hint)}</em></div>`;
+    const connected = ['claude', 'chatgpt', 'grok'].filter((k) => a[k]);
+    mBody.innerHTML = `${progress}
+      <div class="wiz-hero">${LOGO_SVG}<div><h3>${s.USER_NAME ? `C’est prêt, ${esc(s.USER_NAME)} !` : 'C’est prêt !'}</h3><p>Écris simplement ce que tu veux : Claude comprend quand il faut une image, un autre avis ou du code.</p></div></div>
+      <div class="wiz-recap">
+        ${line(a.claude, 'Claude', a.claude ? 'connecté' : 'à connecter')}
+        ${line(a.chatgpt, 'ChatGPT', a.chatgpt ? 'connecté' : 'à connecter')}
+        ${line(a.grok, 'Grok', a.grok ? 'connecté' : 'à connecter')}
+        ${line(true, 'Mode dans les projets', PERM_INFO[state.prefs.perm]?.label || 'Demander')}
+        ${line(!!wiz.project, 'Projet', wiz.project ? wiz.project.name : 'discussion libre')}
+      </div>
+      ${connected.length ? '' : '<p class="note warn">Aucune IA n’est encore connectée : tu pourras le faire depuis Réglages → Connexions (ou la carte en bas à gauche).</p>'}
+      <div class="group-title">Pour bien démarrer</div>
+      <div class="kbd-grid">
+        <span><kbd>/</kbd></span><span>Commandes et skills (/plan, /review, /compact…)</span>
+        <span><kbd>Ctrl</kbd> <kbd>M</kbd></span><span>Dicter au micro</span>
+        <span><kbd>Ctrl</kbd> <kbd>Maj</kbd> <kbd>P</kbd></span><span>Palette de commandes</span>
+        <span><kbd>Ctrl</kbd> <kbd>J</kbd></span><span>Panneau de travail : tâches, modifications, Git</span>
+      </div>`;
+  }
+  renderWizardFoot();
+}
+
+async function wizardPickFolder(btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Choisis le dossier dans la fenêtre…';
+  try {
+    const p = await api('/api/projects/pick', { method: 'POST' });
+    if (!p.cancelled) wiz.project = p;
+  } catch (e) { toast(e.message, true); }
+  renderWizard();
+}
+
+async function wizardPath() {
+  const v = $('#wizPath')?.value.trim();
+  if (!v) return toast('Colle d’abord un chemin.', true);
+  try { wiz.project = await api('/api/projects', { method: 'POST', body: { path: v } }); renderWizard(); }
+  catch (e) { toast(e.message, true); }
+}
+
+async function finishWizard({ silent = false } = {}) {
+  if (!wiz.active) return;
+  wiz.active = false;
+  settingsTab = 'general';
+  try { await saveSettings({ SETUP_DONE: 'true' }, true); } catch { /* réessayé au prochain lancement */ }
+  if (!silent) {
+    modal.hidden = true;
+    scrim.hidden = true;
+    stopPolling();
+  }
+  if (wiz.project) await setProject(wiz.project);
+  else renderEmpty();
+  if (!silent) toast(settings().USER_NAME ? `Bienvenue, ${settings().USER_NAME} !` : 'Bienvenue dans Relais !');
+  input.focus();
+}
+
 /* ---------- Démarrage ---------- */
 (async function init() {
   document.documentElement.dataset.width = state.prefs.width;
   $('#app').classList.toggle('side-hidden', !state.prefs.sidebar);
-  setMode('claude');
+  setMode(['claude', 'chatgpt', 'grok'].includes(state.prefs.defaultAgent) ? state.prefs.defaultAgent : 'claude');
   updateSendBtn();
   await Promise.all([loadStatus(), loadSkills(), loadConvs()]);
   renderEmpty();
+  // Premier lancement : l'assistant de configuration s'ouvre après l'animation.
+  if (state.status && settings().SETUP_DONE !== 'true') splashFinished.then(() => openSetup());
   if (state.prefs.panel && matchMedia('(min-width: 1200px)').matches) setPanel(true);
   if (!voiceSupport.mic && !voiceSupport.browser) $('#micBtn').hidden = true;
   loadUsage();
