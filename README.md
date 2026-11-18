@@ -53,7 +53,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 ## Installation
 
 ```bash
-git clone https://github.com/<ton-compte>/relais.git
+git clone https://github.com/Underspace1/relais.git
 cd relais
 ```
 
