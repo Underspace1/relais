@@ -1,4 +1,4 @@
-; Installateur Windows de Relais (Inno Setup 6).
+﻿; Installateur Windows de Relais (Inno Setup 6).
 ; Compilé automatiquement par GitHub Actions (.github/workflows/release.yml).
 ; Installation par utilisateur, sans droits administrateur : Relais écrit ses données
 ; (connexions, conversations, outils) dans son propre dossier, qui doit rester modifiable.

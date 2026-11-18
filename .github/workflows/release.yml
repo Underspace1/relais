@@ -85,7 +85,7 @@ jobs:
             $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
           & $iscc "/DAppVersion=${{ steps.v.outputs.version }}" launcher/installer.iss
-          if ($LASTEXITCODE -ne 0) { throw 'Échec de la création de l’installateur' }
+          if ($LASTEXITCODE -ne 0) { throw 'Echec de la creation de l installateur' }
           Get-ChildItem dist -File | Format-Table Name, Length
 
       - name: Publier la release
