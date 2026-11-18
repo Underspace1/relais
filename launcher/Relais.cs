@@ -230,7 +230,7 @@ class MainForm : Form
     ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Ouvrir Relais", null, (s, e) => ShowFront());
+        menu.Items.Add("Ouvrir Relais    Ctrl+Alt+Espace", null, (s, e) => ShowFront());
         menu.Items.Add("Ouvrir le dossier", null, (s, e) => Process.Start("explorer.exe", "\"" + Program.Root + "\""));
         menu.Items.Add("Journal", null, (s, e) => { var l = Path.Combine(Program.Root, "data", "relais.log"); if (File.Exists(l)) Process.Start("notepad.exe", "\"" + l + "\""); });
         menu.Items.Add(new ToolStripSeparator());
@@ -283,11 +283,32 @@ class MainForm : Form
         }
     }
 
+    /* ---------- Raccourci global : Ctrl+Alt+Espace affiche Relais, prêt à écrire ---------- */
+    const int WM_HOTKEY = 0x0312, HOTKEY_ID = 0x5245;
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        Native.RegisterHotKey(Handle, HOTKEY_ID, 0x0001 /* Alt */ | 0x0002 /* Ctrl */ | 0x4000 /* sans répétition */, 0x20 /* Espace */);
+    }
+
+    protected override void OnHandleDestroyed(EventArgs e)
+    {
+        Native.UnregisterHotKey(Handle, HOTKEY_ID);
+        base.OnHandleDestroyed(e);
+    }
+
     /* ---------- Fenêtre sans bordure, avec les comportements Windows ---------- */
     const int WM_NCCALCSIZE = 0x83, WM_NCHITTEST = 0x84;
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
+        {
+            if (Visible && ContainsFocus && WindowState != FormWindowState.Minimized) Hide();
+            else { ShowFront(); Post("{\"focus\":true}"); }
+            return;
+        }
         if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero)
         {
             // Supprime la barre de titre ; en plein écran, évite que la fenêtre déborde de l'écran.
@@ -355,6 +376,8 @@ class MainForm : Form
 static class Native
 {
     [DllImport("user32.dll")] public static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+    [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
     [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);

@@ -62,7 +62,7 @@ const I = {
 };
 
 const DEFAULT_PREFS = {
-  theme: 'auto', fontSize: 'm', sendKey: 'enter', stepsOpen: false, perm: 'ask', effort: 'normal',
+  theme: 'auto', fontSize: 'm', sendKey: 'enter', stepsOpen: false, perm: 'ask', effort: 'normal', style: 'normal', web: false,
   panel: false, sidebar: true, showThinking: true, notify: true, sound: false, width: 'normal',
   voiceEngine: 'auto', voiceLang: 'fr-FR', voiceAutoSend: false, voiceRead: false, voiceName: '', voiceRate: 1,
 };
@@ -198,7 +198,12 @@ function md(src) {
       i++;
       while (i < lines.length && !/^\s*```/.test(lines[i])) buf.push(lines[i++]);
       i++;
-      out += `<div class="code"><div class="code-head"><span>${esc(fence[1] || 'code')}</span><button type="button" data-copy-code>${I.copy}Copier</button></div><pre><code>${esc(buf.join('\n'))}</code></pre></div>`;
+      const lang = (fence[1] || '').toLowerCase();
+      const previewable = /^(html?|svg|xml|mermaid)$/.test(lang) || (lang === '' && /^\s*<(svg|!doctype html|html)/i.test(buf[0] || ''));
+      out += `<div class="code" data-lang="${esc(lang)}"><div class="code-head"><span>${esc(fence[1] || 'code')}</span><span class="code-acts">
+        ${previewable ? `<button type="button" data-preview-code>${I.expand}Aperçu</button>` : ''}
+        <button type="button" data-download-code title="Enregistrer dans un fichier">${I.download}</button>
+        <button type="button" data-copy-code>${I.copy}Copier</button></span></div><pre><code>${esc(buf.join('\n'))}</code></pre></div>`;
       continue;
     }
     const hd = l.match(/^(#{1,4})\s+(.*)$/);
@@ -440,9 +445,11 @@ function stepEl(step, wasOpen) {
     ${step.input && !step.diff ? `<div class="step-label">${step.agent === 'skill' ? 'Description' : step.kind === 'command' ? 'Commande' : step.kind ? 'Détail' : 'Consigne'}</div><div class="step-input">${esc(step.input)}</div>` : ''}
     ${step.output ? `<div class="step-label">${step.status === 'error' ? 'Erreur' : step.agent === 'skill' ? 'Instructions' : 'Réponse'}</div>
       ${isText && step.status !== 'error' ? `<div class="md">${md(step.output)}</div>` : `<div class="step-input">${esc(step.output)}</div>`}` : ''}`;
-  return h(`<div class="step part-step ${open ? 'open' : ''}" data-id="${esc(step.id)}" data-status="${esc(step.status || 'done')}">
+  const from = AGENTS[step.from] ? step.from : 'claude';
+  const head = step.relay && from !== a ? relayBeam(from, a, step.status) : `<span class="avatar" data-agent="${a}">${AGENTS[a].mono}</span>`;
+  return h(`<div class="step part-step ${open ? 'open' : ''} ${step.relay ? 'is-relay' : ''}" data-id="${esc(step.id)}" data-status="${esc(step.status || 'done')}" data-agent="${a}">
     <button type="button" class="step-head" aria-expanded="${open}">
-      <span class="avatar" data-agent="${a}">${AGENTS[a].mono}</span>
+      ${head}
       <span class="step-title">${esc(step.title || 'Étape')}</span>
       <span class="step-preview">${esc(preview)}</span>
       <span class="step-status">${status}</span>${I.chev}
@@ -595,13 +602,15 @@ function applyEvent(view, ev, d) {
     if (view.parts[i]?.type === 'text') { view.parts[i].text += d.delta; renderTextSoon(view, i); }
     else addPart(view, { type: 'text', text: d.delta });
   } else if (ev === 'step') {
+    if (d.step.relay && !d.step.from) d.step.from = view.agent === 'shell' ? 'claude' : view.agent;
     const i = view.parts.findIndex((p) => p.type === 'step' && p.id === d.step.id);
-    if (i < 0) return addPart(view, { type: 'step', ...d.step });
+    if (i < 0) { addPart(view, { type: 'step', ...d.step }); return updateTalking(view); }
     view.parts[i] = { ...view.parts[i], ...d.step };
     const e = stepEl(view.parts[i], view.els[i].classList.contains('open'));
     view.els[i].replaceWith(e);
     view.els[i] = e;
     scrollDown();
+    updateTalking(view);
   } else if (ev === 'todos') {
     const part = { type: 'todos', ...d.todos };
     const i = view.parts.findIndex((p) => p.type === 'todos');
@@ -717,7 +726,7 @@ async function send(text, override) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         conversationId: state.convId, text, mode: req.mode, skill: req.skill, relay: req.relay, direct: req.direct,
-        project: state.project?.path || null, perm: state.perm, effort: state.prefs.effort,
+        project: state.project?.path || null, perm: state.perm, effort: state.prefs.effort, style: state.prefs.style, web: webAvailable() && !!state.prefs.web,
         attachments: (req.attachments || []).map((x) => x.id), command: req.command,
       }),
       signal: controller.signal,
@@ -774,6 +783,7 @@ async function send(text, override) {
         } else if (ev === 'error') meta.error = d.message;
         else if (ev === 'done') meta.ms = d.ms;
         else if (ev === 'skills') loadSkills();
+        else if (ev === 'memory') { if (!modal.hidden && settingsTab === 'memoire') renderTab(); }
         else {
           applyEvent(view, ev, d);
           if (ev === 'step' && state.panelOpen && ['changes', 'session'].includes(state.inspTab)) renderInspectorSoon();
@@ -787,6 +797,7 @@ async function send(text, override) {
     view.parts.forEach((p, i) => { if (p.type === 'text') view.els[i].innerHTML = md(p.text); });
     finishView(view, meta);
     state.streaming = null;
+    updateTalking(null);
     state.msgCount = userIndex + 2;
     state.convMessages.push({ role: 'user', ...userMsg }, { role: 'assistant', agent: view.agent, parts: view.parts, error: meta.error, ms: meta.ms, stats: meta.stats });
     if (meta.stats) state.stats = meta.stats;
@@ -960,7 +971,8 @@ function renderProjectUI() {
   pb.title = `${PERM_INFO[state.perm].desc} (Maj+Tab pour changer)`;
   $('#relayBtn').hidden = !!p;
   const eb = $('#effortBtn');
-  eb.hidden = !(p && state.mode === 'claude');
+  eb.hidden = !effortAvailable();
+  renderStyleWebBtns();
   eb.dataset.level = state.prefs.effort;
   eb.innerHTML = `${I.brain}<span>${EFFORT_INFO[state.prefs.effort]?.label || 'Normal'}</span>`;
   eb.title = `Réflexion : ${EFFORT_INFO[state.prefs.effort]?.desc || ''}`;
@@ -1091,6 +1103,10 @@ const COMMANDS = [
   { name: 'fork', desc: 'Dupliquer la conversation pour tester une autre piste', when: () => !!state.convId, run: () => forkConversation() },
   { name: 'rename', desc: 'Renommer la conversation', when: () => !!state.convId, run: (a) => renameConv(state.convId, a) },
   { name: 'resume', desc: 'Reprendre une conversation précédente', run: () => openPalette('conv') },
+  { name: 'souvenirs', alias: ['remember', 'memoire'], desc: 'Ce que Relais retient sur toi (mémoire entre conversations)', run: () => openSettings('memoire') },
+  { name: 'style', desc: 'Style de réponse : normal, concis, explicatif, formel, créatif', run: (a) => { if (STYLE_INFO[a]) { state.prefs.style = a; savePrefs(); toast(`Style : ${STYLE_INFO[a].label}`); } else openStylePop(); } },
+  { name: 'web', desc: 'Activer ou couper la recherche web', run: () => toggleWeb() },
+  { name: 'capture', desc: 'Joindre une capture d’écran', run: () => captureScreen() },
   { name: 'mcp', desc: 'Serveurs MCP supplémentaires pour Claude Code', run: () => openSettings('mcp') },
   { name: 'skills', desc: 'Gérer les skills', run: () => openSkills() },
   { name: 'project', alias: ['projets', 'cd'], desc: 'Ouvrir un projet (dossier)', run: () => openProjects() },
@@ -1303,6 +1319,7 @@ const TABS = [
   ['claude', 'Claude', I.spark],
   ['images', 'Images', I.image],
   ['projet', 'Projet', I.folder],
+  ['memoire', 'Mémoire', I.memory],
   ['voix', 'Voix', I.mic],
   ['mcp', 'Serveurs MCP', I.server],
   ['raccourcis', 'Raccourcis', I.keyboard],
@@ -1426,6 +1443,7 @@ function renderTab() {
   }
 
   if (tab === 'voix') renderVoiceTab();
+  if (tab === 'memoire') renderUserMemoryTab();
   if (tab === 'mcp') renderMcpTab();
   if (tab === 'raccourcis') { mBody.innerHTML = helpHtml(); mFoot.hidden = true; }
 
@@ -1845,6 +1863,7 @@ function openDesignViewer(id) {
   const title = card ? $('b', card).textContent : 'Design';
   const v = $('#designViewer');
   $('.dv-title', v).textContent = title;
+  $('iframe', v).removeAttribute('srcdoc');
   $('iframe', v).src = `/designs/${id}.html?t=${Date.now()}`;
   $('[data-dv-download]', v).href = `/designs/${id}.html?download=1`;
   v.dataset.id = id;
@@ -2186,8 +2205,12 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if ((el = t.closest('[data-dv-device]'))) return setDevice(el.dataset.dvDevice);
-  if ((el = t.closest('[data-dv-close]'))) { $('#designViewer').hidden = true; $('#designViewer iframe').src = 'about:blank'; return; }
-  if ((el = t.closest('[data-dv-reload]'))) { $('#designViewer iframe').src = `/designs/${$('#designViewer').dataset.id}.html?t=${Date.now()}`; return; }
+  if ((el = t.closest('[data-dv-close]'))) { $('#designViewer').hidden = true; $('#designViewer iframe').removeAttribute('srcdoc'); $('#designViewer iframe').src = 'about:blank'; return; }
+  if ((el = t.closest('[data-dv-reload]'))) {
+    const f = $('#designViewer iframe');
+    if (f.hasAttribute('srcdoc')) { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; } else f.src = `/designs/${$('#designViewer').dataset.id}.html?t=${Date.now()}`;
+    return;
+  }
   if ((el = t.closest('[data-design-critique]'))) {
     const title = $('b', el.closest('.design-card')).textContent;
     pickRelay('design-critique');
@@ -2242,7 +2265,20 @@ document.addEventListener('click', async (e) => {
     if (await copy((view?.parts || []).filter((p) => p.type === 'text').map((p) => p.text).join('\n\n'))) toast('Réponse copiée');
     return;
   }
-  if ((el = t.closest('[data-retry]'))) { if (lastSent) send(lastSent.text, lastSent); else toast('Rien à relancer dans cette session.'); return; }
+  if ((el = t.closest('[data-retry]'))) return openRetryPop(el);
+  if ((el = t.closest('[data-retry-with]'))) {
+    closePop();
+    const base = lastSent || retrySource(Number(el.dataset.index));
+    if (!base) return toast('Rien à relancer dans cette session.');
+    const mode = el.dataset.retryWith === 'same' ? base.mode : el.dataset.retryWith;
+    return send(base.text, { ...base, mode, relay: el.dataset.retryWith === 'same' ? base.relay : null, direct: false, attachments: base.attachments || [] });
+  }
+  if ((el = t.closest('[data-preview-code]'))) return previewCode(el.closest('.code'));
+  if ((el = t.closest('[data-download-code]'))) return downloadCode(el.closest('.code'));
+  if ((el = t.closest('[data-attach-files]'))) { closePop(); return $('#fileInput').click(); }
+  if ((el = t.closest('[data-attach-screen]'))) { closePop(); return captureScreen(); }
+  if ((el = t.closest('[data-set-style]'))) { state.prefs.style = el.dataset.setStyle; savePrefs(); closePop(); return toast(`Style : ${STYLE_INFO[state.prefs.style].label}`); }
+  if ((el = t.closest('[data-save-user-memory]'))) return saveUserMemory(el);
   if ((el = t.closest('[data-pick-model]'))) {
     await saveSettings({ [el.dataset.key]: el.dataset.pickModel }, true);
     closePop();
@@ -2507,6 +2543,7 @@ function setupNativeWindow() {
   host.addEventListener('message', (e) => {
     const d = e.data || {};
     if (d.window) document.documentElement.classList.toggle('win-max', d.window === 'max');
+    if (d.focus) { input.focus(); input.select(); }
   });
   host.postMessage('ready');
   syncHostBackground();
@@ -2562,7 +2599,7 @@ function renderAttachments() {
   updateSendBtn();
 }
 
-$('#attachBtn').addEventListener('click', () => $('#fileInput').click());
+$('#attachBtn').addEventListener('click', () => (state.pop === 'attach' ? closePop() : openAttachPop()));
 $('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
 input.addEventListener('paste', (e) => {
   const files = [...(e.clipboardData?.files || [])];
@@ -3317,6 +3354,224 @@ async function finishWizard({ silent = false } = {}) {
   else renderEmpty();
   if (!silent) toast(settings().USER_NAME ? `Bienvenue, ${settings().USER_NAME} !` : 'Bienvenue dans Relais !');
   input.focus();
+}
+
+/* ==========================================================================
+   Animation : les IA se parlent
+   ========================================================================== */
+/** Faisceau entre deux IA dans une étape déléguée : la demande part, la réponse revient. */
+function relayBeam(from, to, status) {
+  const st = status === 'running' ? 'going' : status === 'error' ? 'failed' : 'back';
+  return `<span class="relay-beam" data-state="${st}" aria-hidden="true">
+    <span class="avatar" data-agent="${from}">${AGENTS[from].mono}</span>
+    <span class="beam" data-from="${from}" data-to="${to}"><i></i><i></i><i></i><b></b></span>
+    <span class="avatar" data-agent="${to}">${AGENTS[to].mono}</span>
+  </span>`;
+}
+
+/** Dans la barre du haut, les IA en pleine conversation s'animent et se relient. */
+function updateTalking(view) {
+  const box = $('#topAgents');
+  if (!box) return;
+  const running = view ? view.parts.filter((p) => p.type === 'step' && p.relay && p.status === 'running') : [];
+  const talking = new Set(running.flatMap((p) => [p.from || 'claude', p.agent]));
+  $$('.avatar', box).forEach((a) => a.classList.toggle('talking', talking.has(a.dataset.agent)));
+  box.classList.toggle('linked', talking.size > 1);
+  box.dataset.count = String(running.length);
+  // Une demande vient d'aboutir : petit éclair de retour sur l'IA qui a répondu
+  if (view) {
+    for (const p of view.parts) {
+      if (p.type === 'step' && p.relay && p.status === 'done' && !p._flashed) {
+        p._flashed = true;
+        const av = $(`.avatar[data-agent="${p.agent}"]`, box);
+        if (av) { av.classList.remove('replied'); void av.offsetWidth; av.classList.add('replied'); }
+      }
+    }
+  }
+}
+
+/* ==========================================================================
+   Style de réponse, recherche web, réflexion (comme l'app Claude)
+   ========================================================================== */
+const STYLE_INFO = {
+  normal: { label: 'Normal', desc: 'Réponses par défaut.' },
+  concis: { label: 'Concis', desc: 'Droit au but, réponses courtes.' },
+  explicatif: { label: 'Explicatif', desc: 'Pas à pas, avec des exemples : pour apprendre.' },
+  formel: { label: 'Formel', desc: 'Ton professionnel, structure claire.' },
+  creatif: { label: 'Créatif', desc: 'Chaleureux, idées originales et variantes.' },
+};
+const STYLE_ICON = '<svg viewBox="0 0 24 24"><path d="M4 20c4-1 6-3 7-6l6-9 3 2-6 9c-1.5 2.5-4.5 4-10 4z"/><path d="M14 8l3 2"/></svg>';
+
+const authOf = (mode) => settings()[AUTH_OF[mode]] || 'account';
+
+function effortAvailable() {
+  const auth = authOf(state.mode);
+  if (state.project) return state.mode === 'claude' || auth === 'openrouter';
+  return (state.mode === 'claude' && ['account', 'openrouter'].includes(auth)) || auth === 'openrouter';
+}
+
+function webAvailable() {
+  const auth = authOf(state.mode);
+  if (state.project) return false; // les agents de code ont déjà leurs propres outils web
+  return auth === 'openrouter' || (state.mode === 'claude' && auth === 'account');
+}
+
+function renderStyleWebBtns() {
+  const sb = $('#styleBtn');
+  if (!sb) return;
+  const st = STYLE_INFO[state.prefs.style] || STYLE_INFO.normal;
+  sb.innerHTML = `${STYLE_ICON}<span>${st.label}</span>`;
+  sb.dataset.on = state.prefs.style !== 'normal' ? '1' : '';
+  sb.title = `Style de réponse : ${st.label}`;
+  const wb = $('#webBtn');
+  wb.hidden = !webAvailable();
+  wb.setAttribute('aria-pressed', String(!!state.prefs.web));
+  wb.title = state.prefs.web ? 'Recherche web activée (clic pour couper)' : 'Activer la recherche web';
+}
+
+function openStylePop() {
+  state.pop = 'style';
+  $('#styleBtn').setAttribute('aria-expanded', 'true');
+  pop.innerHTML = `<div class="pop-group">Style de réponse</div>${Object.entries(STYLE_INFO).map(([k, v]) => `
+    <button type="button" class="pop-item perm-item ${state.prefs.style === k ? 'active' : ''}" data-set-style="${k}"><b>${v.label}${state.prefs.style === k ? ' ✓' : ''}</b><span>${esc(v.desc)}</span></button>`).join('')}`;
+  pop.hidden = false;
+}
+
+function toggleWeb() {
+  if (!webAvailable()) return toast('La recherche web marche avec Claude (compte) ou une IA via OpenRouter, hors projet.', true);
+  state.prefs.web = !state.prefs.web;
+  savePrefs();
+  toast(state.prefs.web ? 'Recherche web activée' : 'Recherche web coupée');
+}
+$('#styleBtn').addEventListener('click', () => (state.pop === 'style' ? closePop() : openStylePop()));
+$('#webBtn').addEventListener('click', toggleWeb);
+
+/* ==========================================================================
+   Relancer, éventuellement avec une autre IA
+   ========================================================================== */
+function retrySource(index) {
+  const msgs = state.convMessages;
+  for (let i = Math.min(index - 1, msgs.length - 1); i >= 0; i--) {
+    const m = msgs[i];
+    if (m?.role === 'user' && !m.command) return { text: m.text, mode: state.mode, skill: m.skill, relay: m.relay, direct: m.direct, attachments: m.attachments || [] };
+  }
+  return null;
+}
+
+function openRetryPop(btn) {
+  const index = Number(btn.closest('.msg')?.dataset.index) || state.msgCount;
+  state.pop = 'retry';
+  const a = av();
+  const item = (k, label, hint, on = true) => `<button type="button" class="pop-item perm-item ${on ? '' : 'disabled'}" ${on ? `data-retry-with="${k}" data-index="${index}"` : ''}><b>${k === 'same' ? I.retry : `<i class="dot" data-agent="${k}"></i>`}${label}</b><span>${esc(hint)}</span></button>`;
+  pop.innerHTML = `<div class="pop-group">Relancer la dernière demande</div>
+    ${item('same', 'Relancer', 'Même IA, même demande')}
+    ${['claude', 'chatgpt', 'grok'].map((k) => item(k, `Avec ${state.project ? CODER_NAME[k] : AGENTS[k].name}`, a[k] ? 'Comparer avec une autre IA' : 'Non connecté', !!a[k])).join('')}`;
+  pop.hidden = false;
+}
+
+/* ==========================================================================
+   Aperçu des blocs de code (HTML, SVG, Mermaid) et enregistrement
+   ========================================================================== */
+const EXT = { javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', python: 'py', py: 'py', lua: 'lua', luau: 'luau', html: 'html', css: 'css', json: 'json', svg: 'svg', xml: 'xml', bash: 'sh', sh: 'sh', powershell: 'ps1', ps1: 'ps1', markdown: 'md', md: 'md', mermaid: 'mmd', csharp: 'cs', cs: 'cs', java: 'java', go: 'go', rust: 'rs', sql: 'sql', yaml: 'yml', yml: 'yml', toml: 'toml', c: 'c', cpp: 'cpp' };
+
+function codeText(block) { return $('code', block).textContent; }
+
+function previewHtml(lang, code) {
+  if (lang === 'mermaid') {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff;font-family:system-ui}</style></head>
+      <body><pre class="mermaid">${esc(code)}</pre><script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'default'});</script></body></html>`;
+  }
+  if (lang === 'svg' || /^\s*<svg/i.test(code)) return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff}svg{max-width:96vw;max-height:96vh}</style></head><body>${code}</body></html>`;
+  return code;
+}
+
+function previewCode(block) {
+  const lang = block.dataset.lang || (/^\s*<svg/i.test(codeText(block)) ? 'svg' : 'html');
+  const v = $('#designViewer');
+  const f = $('iframe', v);
+  $('.dv-title', v).textContent = `Aperçu · ${lang === 'mermaid' ? 'diagramme' : lang.toUpperCase()}`;
+  f.removeAttribute('src');
+  f.srcdoc = previewHtml(lang, codeText(block));
+  const blob = URL.createObjectURL(new Blob([previewHtml(lang, codeText(block))], { type: 'text/html' }));
+  const dl = $('[data-dv-download]', v);
+  dl.href = blob;
+  dl.download = `apercu.${lang === 'mermaid' ? 'html' : EXT[lang] || 'html'}`;
+  v.dataset.id = '';
+  v.dataset.srcdoc = '1';
+  setDevice('desktop');
+  v.hidden = false;
+}
+
+function downloadCode(block) {
+  const lang = block.dataset.lang;
+  const url = URL.createObjectURL(new Blob([codeText(block)], { type: 'text/plain;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `code.${EXT[lang] || 'txt'}`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ==========================================================================
+   Pièces jointes : menu + capture d'écran
+   ========================================================================== */
+function openAttachPop() {
+  state.pop = 'attach';
+  $('#attachBtn').setAttribute('aria-expanded', 'true');
+  pop.innerHTML = `<div class="pop-group">Ajouter</div>
+    <button type="button" class="pop-item perm-item" data-attach-files><b>${I.file}Fichiers ou images…</b><span>Ou glisse-dépose, ou colle (Ctrl V)</span></button>
+    <button type="button" class="pop-item perm-item" data-attach-screen><b>${I.monitor}Capture d’écran</b><span>Choisis une fenêtre ou un écran à joindre</span></button>`;
+  pop.hidden = false;
+}
+
+async function captureScreen() {
+  if (!navigator.mediaDevices?.getDisplayMedia) return toast('Capture d’écran indisponible ici : utilise Win + Maj + S puis colle (Ctrl V).', true);
+  let stream;
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'never' }, audio: false }); }
+  catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(`Capture impossible : ${e.message}. Astuce : Win + Maj + S puis Ctrl V.`, true); return; }
+  try {
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+    await new Promise((r) => setTimeout(r, 250));
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth;
+    c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    await addFiles([new File([blob], `capture-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`, { type: 'image/png' })]);
+  } finally {
+    stream.getTracks().forEach((t) => t.stop());
+  }
+}
+
+/* ==========================================================================
+   Mémoire entre les conversations
+   ========================================================================== */
+async function renderUserMemoryTab() {
+  const s = settings();
+  mBody.innerHTML = '<p class="note">Chargement…</p>';
+  let text = '';
+  try { ({ text } = await api('/api/memory')); } catch { /* vide */ }
+  if (settingsTab !== 'memoire') return;
+  mBody.innerHTML = `<p class="note" style="margin:0 0 14px">Comme la mémoire de l’app Claude : Relais retient quelques faits durables sur toi (tes projets, tes préférences) et les relit au début de chaque conversation, avec toutes les IA. Dis simplement « retiens que… » ou modifie la liste ici.</p>
+    <div class="group">
+      ${row('Utiliser la mémoire', 'Désactivée, rien n’est retenu ni relu.', sw('MEMORY_ENABLED', s.MEMORY_ENABLED))}
+    </div>
+    <textarea class="textarea mono tall" id="userMemText" spellcheck="false" placeholder="- Mikael crée un jeu Roblox d’obby&#10;- Il préfère des explications courtes">${esc(text)}</textarea>
+    <p class="note">Ces informations restent sur ton PC (relais/data/memory.md) et sont envoyées aux IA avec chaque conversation.</p>`;
+  mFoot.hidden = false;
+  mFoot.innerHTML = `<button type="button" class="btn primary" data-save-user-memory>${I.check}Enregistrer</button><span class="note right">${text.trim() ? `${text.trim().split('\n').filter(Boolean).length} élément(s)` : 'Rien pour l’instant'}</span>`;
+}
+
+async function saveUserMemory(btn) {
+  btn.disabled = true;
+  try { await api('/api/memory', { method: 'PUT', body: { text: $('#userMemText').value } }); toast('Mémoire enregistrée'); renderUserMemoryTab(); }
+  catch (e) { toast(e.message, true); }
+  btn.disabled = false;
 }
 
 /* ---------- Démarrage ---------- */

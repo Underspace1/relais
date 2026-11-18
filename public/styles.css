@@ -964,3 +964,59 @@ svg.logo, .splash-logo, .splash-sign, .wiz-hero svg.logo { stroke: none; stroke-
 .or-sep::before, .or-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .or-card .pill.right { margin-left: auto; }
 .btn { text-decoration: none; }
+
+/* ==========================================================================
+   Animation : les IA se parlent
+   ========================================================================== */
+.relay-beam { display: inline-flex; align-items: center; gap: 0; flex: none; }
+.relay-beam .avatar { width: 20px; height: 20px; border-radius: 6px; font-size: 9px; position: relative; z-index: 1; }
+.beam { --cf: var(--c-claude); --ct: var(--muted); position: relative; display: block; width: 46px; height: 2px; margin: 0 3px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--cf) 45%, transparent), color-mix(in srgb, var(--ct) 45%, transparent)); overflow: visible; }
+.beam[data-from='chatgpt'] { --cf: var(--c-chatgpt); }
+.beam[data-from='grok'] { --cf: var(--c-grok); }
+.beam[data-to='claude'] { --ct: var(--c-claude); }
+.beam[data-to='chatgpt'], .beam[data-to='codex'] { --ct: var(--c-chatgpt); }
+.beam[data-to='grok'] { --ct: var(--c-grok); }
+.beam[data-to='cursor'] { --ct: var(--c-cursor); }
+.beam i, .beam b { position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; opacity: 0; }
+.beam i { left: 0; background: var(--cf); box-shadow: 0 0 8px var(--cf); }
+.beam b { right: 0; background: var(--ct); box-shadow: 0 0 10px var(--ct); }
+/* La demande part : des paquets filent vers l'IA appelée, qui s'illumine */
+.relay-beam[data-state='going'] .beam i { animation: beam-go 1.1s cubic-bezier(.45, 0, .55, 1) infinite; }
+.relay-beam[data-state='going'] .beam i:nth-child(2) { animation-delay: .37s; }
+.relay-beam[data-state='going'] .beam i:nth-child(3) { animation-delay: .74s; }
+.relay-beam[data-state='going'] .avatar:last-child { animation: beam-listen 1.1s ease-in-out infinite; }
+.relay-beam[data-state='going'] .avatar:first-child { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-claude) 35%, transparent); }
+/* La réponse revient : un éclat repart vers l'IA qui avait demandé */
+.relay-beam[data-state='back'] .beam { background: linear-gradient(90deg, var(--cf), var(--ct)); opacity: .55; }
+.relay-beam[data-state='back'] .beam b { animation: beam-back .75s cubic-bezier(.3, 0, .3, 1) both; }
+.relay-beam[data-state='back'] .avatar:first-child { animation: beam-receive .5s ease-out .65s both; }
+.relay-beam[data-state='failed'] .beam { background: repeating-linear-gradient(90deg, var(--danger) 0 4px, transparent 4px 8px); opacity: .6; }
+@keyframes beam-go { 0% { left: 0; opacity: 0; transform: scale(.6); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: calc(100% - 6px); opacity: 0; transform: scale(1); } }
+@keyframes beam-back { 0% { right: 0; opacity: 0; } 15% { opacity: 1; } 100% { right: calc(100% - 6px); opacity: 0; } }
+@keyframes beam-listen { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--text) 0%, transparent); transform: scale(1); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--text) 12%, transparent); transform: scale(1.08); } }
+@keyframes beam-receive { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.step.is-relay[data-status='running']::before { background: linear-gradient(90deg, transparent, var(--c-claude), var(--c-chatgpt), transparent); background-size: 60% 100%; background-repeat: no-repeat; }
+
+/* Barre du haut : les IA qui se parlent s'écartent, se relient et s'animent */
+.top-agents { position: relative; }
+.top-agents .avatar { transition: margin .35s cubic-bezier(.2, .8, .2, 1), opacity .3s, transform .3s; }
+.top-agents.linked .avatar { margin-left: 10px; }
+.top-agents.linked::before { content: ''; position: absolute; left: 14px; right: 4px; top: 50%; height: 2px; margin-top: -1px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--c-claude), var(--c-chatgpt), var(--c-grok), var(--c-claude)); background-size: 300% 100%; animation: link-flow 1.4s linear infinite; opacity: .8; }
+.top-agents .avatar.talking { opacity: 1; position: relative; z-index: 1; animation: talk 1.1s ease-in-out infinite; }
+.top-agents .avatar.replied { animation: replied .6s ease-out; }
+@keyframes talk { 0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 transparent; } 50% { transform: translateY(-2px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 14%, transparent); } }
+@keyframes replied { 0% { transform: scale(1); } 35% { transform: scale(1.3); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 40%, transparent); } 100% { transform: scale(1); } }
+@keyframes link-flow { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .beam i, .beam b, .top-agents::before { animation: none !important; opacity: .7; } }
+
+/* Style de réponse et recherche web */
+.style-btn[data-on='1'] svg { color: var(--c-claude); }
+.style-btn[data-on='1'] { border-color: color-mix(in srgb, var(--c-claude) 40%, var(--line)); }
+.web-btn[aria-pressed='true'] { color: #fff; background: var(--c-chatgpt); border-color: transparent; }
+@container (max-width: 820px) { #styleBtn span { display: none; } #styleBtn { width: 32px; padding: 0; justify-content: center; } }
+
+/* Blocs de code : aperçu et enregistrement */
+.code-acts { display: inline-flex; gap: 2px; align-items: center; }
+.code-head .code-acts button svg { width: 13px; height: 13px; }
+.top-agents .avatar { position: relative; z-index: 1; }

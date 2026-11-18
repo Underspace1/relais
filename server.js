@@ -17,6 +17,7 @@ import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
 import { transcribe, voiceEngines } from './lib/voice.js';
 import { orKeyInfo } from './lib/llm.js';
+import { readMemory as readUserMemory, writeMemory as writeUserMemory } from './lib/memory.js';
 import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
 
 const PORT = Number(getConfig().PORT) || 4321;
@@ -122,12 +123,16 @@ function makeAsker(convId, send, signal) {
 
 /* ---------- Discussion (flux SSE) ---------- */
 async function handleChat(req, res) {
-  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command } = await readBody(req);
+  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command, style, web } = await readBody(req);
   if (!String(text || '').trim()) return json(res, 400, { error: 'Message vide' });
   const attachments = (Array.isArray(attIds) ? attIds : []).slice(0, 12).map(getUpload).filter(Boolean);
   if (!['claude', 'chatgpt', 'grok'].includes(mode)) return json(res, 400, { error: 'Mode inconnu' });
 
   const cfg = getConfig();
+  // Réglages de ce message : style de réponse, recherche web, réflexion
+  cfg.responseStyle = typeof style === 'string' ? style : '';
+  cfg.webSearch = !!web;
+  cfg.effort = effort;
   await connectorStatus(cfg);
   const av = available(cfg);
   const isShell = command === 'shell';
@@ -329,6 +334,10 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, saveUpload(await readBody(req, 30_000_000))); }
       catch (e) { return json(res, 400, { error: e.message }); }
     }
+
+    /* Mémoire (faits durables sur l'utilisateur) */
+    if (p === '/api/memory' && m === 'GET') return json(res, 200, { text: readUserMemory() });
+    if (p === '/api/memory' && m === 'PUT') return json(res, 200, { text: writeUserMemory((await readBody(req)).text) });
 
     /* Serveurs MCP supplémentaires */
     if (p === '/api/mcp' && m === 'GET') return json(res, 200, readMcp());
