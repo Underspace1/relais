@@ -22,15 +22,38 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 
 ## Aperçu
 
-![Session de code : tâches, commandes « / », panneau de travail](docs/screenshots/apercu-v3.png)
+### Le pont entre les IA
+Tu demandes un logo sans nommer d'IA : Relais te propose Gemini, ChatGPT ou Grok, avec la recommandation de Claude et sa raison. L'image arrive, et l'étape garde la trace du choix.
 
-| Menu « Relais » : déléguer une tâche | Connexions aux comptes |
+| Choisir l'IA | Le résultat |
 |---|---|
-| ![Menu Relais](docs/screenshots/menu-relais.png) | ![Réglages, Connexions](docs/screenshots/connexions.png) |
+| ![Carte de choix : Gemini, ChatGPT ou Grok](docs/screenshots/pont-ia.png) | ![Image générée par Gemini, choix conservé dans l'étape](docs/screenshots/image-gemini.png) |
 
-| Skills |
-|---|
-| ![Écran Skills](docs/screenshots/skills.png) |
+### Recherche avec sources
+Claude confie la recherche à Perplexity et répond en citant la documentation (thème sombre).
+
+![Recherche Perplexity avec ses sources](docs/screenshots/recherche.png)
+
+### Artefacts à côté de la conversation
+Les maquettes s'ouvrent dans un panneau à droite, avec les onglets Aperçu et Code.
+
+![Maquette de menu de jeu dans le panneau d'artefact](docs/screenshots/artefact.png)
+
+### Coder dans un projet
+Ici Gemini CLI travaille dans un projet Roblox (Rojo) : liste de tâches, modification montrée avec son diff, résumé.
+
+![Session de code avec Gemini CLI : tâches et diff](docs/screenshots/projet.png)
+
+### Outils, MCP, IA locale et skills
+
+| Le menu Outils | Serveurs MCP pour toutes les IA |
+|---|---|
+| ![Menu Outils : recherche, réflexion, style, choix des IA](docs/screenshots/outils.png) | ![Réglages, Serveurs MCP](docs/screenshots/mcp.png) |
+
+| IA locale (Ollama, LM Studio…) | Skills proposés à la configuration |
+|---|---|
+| ![Connexion d'une IA locale](docs/screenshots/ia-locale.png) | ![Assistant de configuration : Caveman, Ponytail, UI/UX Pro Max, Roblox](docs/screenshots/skills-config.png) |
+
 
 ---
 

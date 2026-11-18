@@ -1736,7 +1736,7 @@ function renderConnexions() {
       : '<p class="note">Enregistre d’abord ta clé OpenRouter (en haut).</p>';
     return `<div class="conn">
       <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${c.custom === 'local' ? (s.LOCAL_URL ? `${esc(s.LOCAL_URL)}${s.LOCAL_MODEL ? ` · ${esc(s.LOCAL_MODEL)}` : ''}` : 'Ollama, LM Studio, llama.cpp, Jan…') : mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${modes.length > 1 ? `<div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>` : ''}
         <span class="note" style="flex:1;min-width:200px">${c.custom === 'local' ? c.local : mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
       ${c.custom === 'local' ? localBlock(s) : mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
     </div>`;

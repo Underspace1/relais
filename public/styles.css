@@ -1430,3 +1430,5 @@ body { letter-spacing: -0.003em; }
 .avatar[data-agent='local'] { background: var(--c-local); }
 .beam[data-from='local'] { --cf: var(--c-local); }
 .beam[data-to='local'] { --ct: var(--c-local); }
+.design-head .tag { white-space: nowrap; flex: none; }
+.design-head b { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
