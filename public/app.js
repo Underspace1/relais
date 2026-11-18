@@ -119,6 +119,7 @@ const CODERS = ['claude', 'chatgpt', 'grok', 'gemini', 'local'];
 const CODER_NAME = new Proxy({}, {
   get: (_, k) => {
     if (!OFFICIAL_CODER[k]) return undefined;
+    if (state?.status?.available?.cursorCode?.[k]) return `${AGENTS[k].name} · Cursor`;
     const auth = state?.status?.settings?.[AUTH_OF[k]] || 'account';
     return auth === 'account' ? OFFICIAL_CODER[k] : AGENTS[k].name;
   },
@@ -424,6 +425,7 @@ function userEl(m, index) {
     <div class="msg-actions user-actions">
       <button type="button" data-copy-user title="Copier">${I.copy}<span>Copier</span></button>
       ${isShell ? '' : `<button type="button" data-edit-msg title="Modifier et renvoyer">${I.edit}<span>Modifier</span></button>`}
+      ${m.checkpoint ? checkpointBtn() : ''}
     </div></div>`);
 }
 
@@ -622,6 +624,7 @@ function assistantEl(m, index, { last = false } = {}) {
     view.partsEl.append(e);
   }
   finishView(view, { ms: m.ms, error: m.error, stats: m.stats });
+  if (m.changes?.files?.length) $('.msg-actions', view.el).before(changesEl(m.changes, index));
   if (m.feedback?.value) $(`[data-feedback="${m.feedback.value}"]`, view.el)?.classList.add('on');
   return view.el;
 }
@@ -836,6 +839,15 @@ async function send(text, override) {
         } else if (ev === 'meta') {
           meta.stats = d.meta;
           $('.msg-meta', view.el).textContent = fmtStats(d.meta);
+        } else if (ev === 'checkpoint') {
+          userMsg.checkpoint = d.sha;
+          const ua = $(`.msg.user[data-index="${userIndex}"] .user-actions`);
+          if (ua && !$('[data-restore-cp]', ua)) ua.insertAdjacentHTML('beforeend', checkpointBtn());
+        } else if (ev === 'changes') {
+          meta.changes = d;
+          $('.msg-actions', view.el).before(changesEl(d, userIndex + 1));
+          afterFilesChanged();
+          scrollDown();
         } else if (ev === 'compacted') {
           meta.compacted = true;
         } else if (ev === 'error') meta.error = d.message;
@@ -857,7 +869,7 @@ async function send(text, override) {
     state.streaming = null;
     updateTalking(null);
     state.msgCount = userIndex + 2;
-    state.convMessages.push({ role: 'user', ...userMsg }, { role: 'assistant', agent: view.agent, parts: view.parts, error: meta.error, ms: meta.ms, stats: meta.stats });
+    state.convMessages.push({ role: 'user', ...userMsg }, { role: 'assistant', agent: view.agent, parts: view.parts, error: meta.error, ms: meta.ms, stats: meta.stats, ...(meta.changes ? { changes: meta.changes } : {}) });
     if (meta.stats) state.stats = meta.stats;
     // En mode plan sans carte « plan » (Codex, Grok, Gemini), on propose quand même d'exécuter.
     if (state.project && state.perm === 'plan' && !meta.error && req.command !== 'shell' && !view.parts.some((p) => p.type === 'plan')) {
@@ -1182,7 +1194,7 @@ const COMMANDS = [
   { name: 'init', desc: 'Analyser le projet et créer son CLAUDE.md', when: () => !!state.project, run: () => send('Analyse ce projet et crée (ou mets à jour) un fichier CLAUDE.md à sa racine : description, structure des dossiers, commandes pour lancer/tester/construire, conventions de code, points d’attention. Reste concis et utile pour une IA qui reprendra le projet.') },
   { name: 'review', desc: 'Relire les modifications en cours (git diff)', when: () => !!state.project, run: (a) => send(`Relis les modifications non commitées de ce projet (git diff, et nouveaux fichiers). Signale les bugs, les risques et les oublis, classés par gravité, puis propose les corrections.${a ? ` Focus : ${a}` : ''}`) },
   { name: 'security-review', desc: 'Audit de sécurité des modifications en cours', when: () => !!state.project, run: () => send('Fais une revue de sécurité des modifications non commitées de ce projet : injections, secrets exposés, validation des entrées, permissions, RemoteEvents non sécurisés (Roblox)… Classe par gravité et propose les corrections.') },
-  { name: 'memory', desc: 'Modifier la mémoire du projet (CLAUDE.md)', when: () => !!state.project, run: () => openMemory() },
+  { name: 'memory', desc: 'Règles du projet pour toutes les IA (CLAUDE.md, AGENTS.md, règles Cursor)', when: () => !!state.project, run: () => openMemory() },
   { name: 'diff', desc: 'Voir les fichiers modifiés', when: () => !!state.project, run: () => openPanel('changes') },
   { name: 'git', desc: 'État Git et commit', when: () => !!state.project, run: () => openPanel('git') },
   { name: 'todos', desc: 'Liste de tâches de l’IA', run: () => openPanel('tasks') },
@@ -1532,7 +1544,7 @@ function renderTab() {
         ${row('Projets', 'Ouvre un dossier pour que Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
         ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
         ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
-        ${state.project ? row(`Mémoire de ${esc(state.project.name)}`, 'CLAUDE.md : les consignes que Claude Code relit à chaque session.', '<button type="button" class="btn sm" data-open-memory>Modifier CLAUDE.md</button>') : ''}
+        ${state.project ? row(`Mémoire de ${esc(state.project.name)}`, 'CLAUDE.md : les consignes que Claude Code relit à chaque session.', '<button type="button" class="btn sm" data-open-memory>Règles du projet</button>') : ''}
       </div>
       <p class="note warn">Relais refuse les dossiers trop larges (disque entier, dossier utilisateur, Bureau, Documents…). Avec « Accès complet », garde une sauvegarde de ton projet (Git).</p>
       <details ${String(s.CURSOR_ENABLED) === 'true' ? 'open' : ''}><summary class="group-title" style="cursor:pointer">Optionnel : Cursor</summary>
@@ -1649,6 +1661,23 @@ function localBlock(s) {
     <div class="conn-test" data-test-out="local"></div>
     <p class="note">${url ? 'Les modèles installés apparaissent dans la liste. ' : ''}Avec Ollama : installe-le, puis tape par exemple <code>ollama pull qwen3</code> dans un terminal. Les petits modèles ne savent pas tous utiliser les outils : Relais s’en passe alors.</p>`;
 }
+CONNECTORS.push({
+  id: 'cursor', agent: 'cursor', name: 'Cursor', authKey: 'CURSOR_MODE', keyK: 'CURSOR_KEY', mask: 'cursor', tool: 'l’agent Cursor', modes: ['account'], optional: true,
+  account: 'Ton abonnement Cursor fait coder toutes tes IA dans tes projets : ChatGPT, Gemini, Grok (et Claude si tu veux), chacune avec son modèle, via l’agent Cursor officiel. Claude reste le chef d’orchestre et leur confie les sous-tâches.',
+  extra: (s) => cursorExtra(s),
+});
+const CURSOR_CODER_LIST = [['chatgpt', 'CURSOR_MODEL_CHATGPT'], ['gemini', 'CURSOR_MODEL_GEMINI'], ['grok', 'CURSOR_MODEL_GROK'], ['claude', 'CURSOR_MODEL_CLAUDE']];
+const cursorCodersOf = (s) => String(s.CURSOR_CODERS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+function cursorExtra(s) {
+  const on = cursorCodersOf(s);
+  return `<div class="cursor-coders">
+    <div class="group-title" style="margin-top:4px">Qui code via Cursor dans tes projets</div>
+    ${CURSOR_CODER_LIST.map(([a, k]) => `<div class="cc-row ${on.includes(a) ? 'on' : ''}">
+      <label class="cc-check"><input type="checkbox" data-cursor-coder="${a}" ${on.includes(a) ? 'checked' : ''}><span class="avatar" data-agent="${a}">${AGENTS[a].mono}</span><b>${AGENTS[a].name}</b>${a === 'claude' ? '<small>Claude reste chef d’orchestre ; coche seulement pour qu’il code lui aussi via Cursor</small>' : ''}</label>
+      <div class="cc-model">${modelField(k, s[k], 'auto')}</div></div>`).join('')}
+    <p class="note">Modèle vide : le plus récent de chaque famille dans ton Cursor (liste lue avec <code>cursor-agent models</code>). Dans un projet, choisis l’IA en bas à droite : celles cochées ici travaillent via Cursor ; avec Claude, il leur confie lui-même des sous-tâches.</p>
+  </div>`;
+}
 const CLI_CONNECTORS = CONNECTORS.filter((c) => c.tool);
 
 function connPill(c) {
@@ -1691,7 +1720,7 @@ function renderConnexions() {
   const typing = mBody.querySelector('[data-login-code]:focus, [data-key]:focus');
   if (typing && typing.value) return;
   const s = settings();
-  const missing = CLI_CONNECTORS.filter((c) => (s[c.authKey] || 'account') === 'account' && state.connectors && !state.connectors[c.id]?.installed);
+  const missing = CLI_CONNECTORS.filter((c) => !c.optional && (s[c.authKey] || 'account') === 'account' && state.connectors && !state.connectors[c.id]?.installed);
   const orKey = s.keys?.openrouter;
   const allOr = CONNECTORS.every((c) => s[c.authKey] === 'openrouter');
   const orInfo = state.orInfo;
@@ -1755,6 +1784,7 @@ function renderConnexions() {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${modes.length > 1 ? `<div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>` : ''}
         <span class="note" style="flex:1;min-width:200px">${c.custom === 'local' ? c.local : mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
       ${c.custom === 'local' ? localBlock(s) : mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
+      ${c.extra ? c.extra(s) : ''}
     </div>`;
   }).join('')}`;
   mFoot.hidden = false;
@@ -2113,6 +2143,13 @@ async function copy(text) { try { await navigator.clipboard.writeText(text); ret
 /* Réglages : enregistrement automatique */
 mBody.addEventListener('change', (e) => {
   const t = e.target;
+  if (t.dataset.cursorCoder) {
+    const cur = new Set(cursorCodersOf(settings()));
+    if (t.checked) cur.add(t.dataset.cursorCoder); else cur.delete(t.dataset.cursorCoder);
+    const v = [...cur].join(',');
+    saveSettings({ CURSOR_CODERS: v || '__clear__' }, true).then(() => { setMode(state.mode); toast(t.checked ? `${AGENTS[t.dataset.cursorCoder].name} codera via Cursor` : `${AGENTS[t.dataset.cursorCoder].name} n’utilisera plus Cursor`); renderConnexions(); });
+    return;
+  }
   if (t.dataset.wizSkill && wiz.skills) { if (t.checked) wiz.skills.picked.add(t.dataset.wizSkill); else wiz.skills.picked.delete(t.dataset.wizSkill); return renderWizard(); }
   if (t.dataset.k) {
     const v = t.type === 'checkbox' ? String(t.checked) : t.value;
@@ -2577,6 +2614,9 @@ document.addEventListener('keydown', (e) => {
   if (mod && e.shiftKey && k === 'p') { e.preventDefault(); return openPalette(); }
   if (mod && !e.shiftKey && k === 'p') { e.preventDefault(); return openPalette('conv'); }
   // Comme Claude Desktop : Ctrl K cherche, Ctrl Maj O ouvre une nouvelle conversation, Ctrl Maj I la rend privée.
+  // Dans l'éditeur de code, Ctrl K modifie la sélection avec l'IA (comme Cursor)
+  if (mod && !e.shiftKey && k === 'k' && e.target.closest?.('.ft-editor')) { e.preventDefault(); if (!e.target.closest('.ik-box')) openInlineEdit(); return; }
+  if (mod && !e.shiftKey && k === 's' && e.target.closest?.('.ft-editor')) { e.preventDefault(); return saveEditor(); }
   if (mod && !e.shiftKey && k === 'k') { e.preventDefault(); return openPalette('conv'); }
   if (mod && e.shiftKey && k === 'o') { e.preventDefault(); return newChat(); }
   if (mod && e.shiftKey && k === 'i') { e.preventDefault(); return setIncognito(!state.incognito); }
@@ -2618,6 +2658,8 @@ async function loadModels() {
 
 function modelKey(mode = state.mode) {
   const s = settings();
+  // Dans un projet, une IA qui code via Cursor utilise son modèle Cursor
+  if (state.project && av().cursorCode?.[mode]) return `CURSOR_MODEL_${mode === 'chatgpt' ? 'CHATGPT' : mode.toUpperCase()}`;
   if (mode === 'chatgpt') return s.OPENAI_AUTH === 'api' ? 'OPENAI_MODEL' : s.OPENAI_AUTH === 'openrouter' ? 'OPENROUTER_GPT_MODEL' : 'CODEX_MODEL';
   if (mode === 'grok') return s.XAI_AUTH === 'api' ? 'GROK_MODEL' : s.XAI_AUTH === 'openrouter' ? 'OPENROUTER_GROK_MODEL' : 'GROK_ACCOUNT_MODEL';
   if (mode === 'gemini') return s.GEMINI_AUTH === 'api' ? 'GEMINI_MODEL' : s.GEMINI_AUTH === 'openrouter' ? 'OPENROUTER_GEMINI_MODEL' : 'GEMINI_ACCOUNT_MODEL';
@@ -2625,13 +2667,14 @@ function modelKey(mode = state.mode) {
   if (mode === 'local') return 'LOCAL_MODEL';
   return s.CLAUDE_AUTH === 'api' ? 'CLAUDE_MODEL' : s.CLAUDE_AUTH === 'openrouter' ? 'OPENROUTER_CLAUDE_MODEL' : 'CLAUDE_ACCOUNT_MODEL';
 }
-const ALLOWS_DEFAULT = ['LOCAL_MODEL', 'CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'GEMINI_ACCOUNT_MODEL', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_GEMINI_MODEL', 'OPENROUTER_PERPLEXITY_MODEL', 'OPENROUTER_IMAGE_MODEL', 'OPENROUTER_GEMINI_IMAGE_MODEL'];
+const ALLOWS_DEFAULT = ['CURSOR_MODEL_CLAUDE', 'CURSOR_MODEL_CHATGPT', 'CURSOR_MODEL_GEMINI', 'CURSOR_MODEL_GROK', 'LOCAL_MODEL', 'CODEX_MODEL', 'GROK_ACCOUNT_MODEL', 'GEMINI_ACCOUNT_MODEL', 'GEMINI_MODEL', 'GEMINI_IMAGE_MODEL', 'OPENROUTER_CLAUDE_MODEL', 'OPENROUTER_GPT_MODEL', 'OPENROUTER_GROK_MODEL', 'OPENROUTER_GEMINI_MODEL', 'OPENROUTER_PERPLEXITY_MODEL', 'OPENROUTER_IMAGE_MODEL', 'OPENROUTER_GEMINI_IMAGE_MODEL'];
 
 function modelLabel(key, value) {
   const list = state.models?.[key] || [];
   if (!value) {
     if (key.startsWith('OPENROUTER_') || key === 'GEMINI_MODEL' || key === 'GEMINI_IMAGE_MODEL') return 'Auto · le plus récent';
     if (key === 'LOCAL_MODEL') return 'Auto · premier modèle installé';
+    if (key.startsWith('CURSOR_MODEL_')) return 'Auto · le plus récent dans Cursor';
     const d = list.find((m) => m.isDefault);
     return d ? `${d.label} (défaut)` : 'Par défaut';
   }
@@ -2682,7 +2725,7 @@ function openModelPop() {
   const modes = state.project ? CODERS : MODES;
   const items = [...(ALLOWS_DEFAULT.includes(k) ? [{ id: '', label: modelLabel(k, ''), hint: k.startsWith('OPENROUTER_') ? 'Relais choisit le modèle le plus récent' : 'Laisse l’outil choisir' }] : []), ...list];
   pop.innerHTML = `<div class="menu-label">${state.project ? 'Qui code dans le projet' : 'Écrire à'}</div>
-    ${modes.map((m) => `<button type="button" class="menu-row ${m === state.mode ? 'active' : ''}" data-set-mode="${m}"><i class="dot" data-agent="${m}" style="opacity:${a[m] ? 1 : 0.35}"></i><span class="mr-txt">${esc(state.project ? CODER_NAME[m] || AGENTS[m].name : AGENTS[m].name)}<small>${esc(state.project ? (m === 'claude' ? 'Peut confier des tâches aux autres IA' : 'Lit, modifie et teste les fichiers') : MODE_HINT[m])}${a[m] ? '' : ' · non connecté'}</small></span>${m === state.mode ? `<span class="mr-end">${I.check}</span>` : ''}</button>`).join('')}
+    ${modes.map((m) => `<button type="button" class="menu-row ${m === state.mode ? 'active' : ''}" data-set-mode="${m}"><i class="dot" data-agent="${m}" style="opacity:${a[m] || a.cursorCode?.[m] ? 1 : 0.35}"></i><span class="mr-txt">${esc(state.project ? CODER_NAME[m] || AGENTS[m].name : AGENTS[m].name)}<small>${esc(state.project ? (m === 'claude' ? 'Peut confier des tâches aux autres IA' : 'Lit, modifie et teste les fichiers') : MODE_HINT[m])}${a[m] || (state.project && a.cursorCode?.[m]) ? '' : ' · non connecté'}</small></span>${m === state.mode ? `<span class="mr-end">${I.check}</span>` : ''}</button>`).join('')}
     <div class="menu-sep"></div>
     <div class="menu-label">Modèle · ${esc(name)}</div>
     ${items.length ? items.map((m) => `<button type="button" class="menu-row ${m.id === cur ? 'active' : ''}" data-pick-model="${esc(m.id)}" data-key="${k}"><span class="mr-txt">${esc(m.label)}<small>${esc(m.hint || m.id || '')}</small></span>${m.id === cur ? `<span class="mr-end">${I.check}</span>` : ''}</button>`).join('')
@@ -3131,6 +3174,8 @@ function renderInspector() {
   const body = $('#inspBody');
   $$('#inspTabs [data-insp]').forEach((b) => b.classList.toggle('on', b.dataset.insp === state.inspTab));
   const tab = state.inspTab;
+  $('#inspector').classList.toggle('wide', tab === 'files' && !!ed.file);
+  if (tab === 'files') return renderFilesTab();
   if (tab === 'tasks') {
     const todos = state.todos;
     body.innerHTML = todos?.length
@@ -3188,7 +3233,7 @@ function renderInspector() {
       ${state.project ? `<span>Projet</span><b class="mono">${esc(state.project.path)}</b><span>Mode</span><b>${esc(PERM_INFO[state.perm].label)}</b><span>Réflexion</span><b>${esc(EFFORT_INFO[state.prefs.effort].label)}</b>` : ''}
     </div>
     <div class="insp-actions">
-      ${state.project ? '<button type="button" class="btn sm" data-open-memory>Modifier CLAUDE.md</button>' : ''}
+      ${state.project ? '<button type="button" class="btn sm" data-open-memory>Règles du projet</button>' : ''}
       ${state.convId ? `<button type="button" class="btn sm" data-pick-cmd="compact">${I.memory}Résumer</button><button type="button" class="btn sm" data-pick-cmd="fork">${I.fork}Dupliquer</button><button type="button" class="btn sm" data-pick-cmd="export">${I.download}Exporter</button>` : ''}
     </div>`;
 }
@@ -3247,16 +3292,35 @@ async function gitCommitFromPanel(btn) {
 }
 
 /* ---------- Mémoire du projet (CLAUDE.md) ---------- */
+const RULE_FILES = { 'CLAUDE.md': 'Lu par Claude Code', 'AGENTS.md': 'Lu par Codex (ChatGPT), Cursor', 'GEMINI.md': 'Lu par Gemini CLI', '.cursorrules': 'Lu par Cursor' };
 async function openMemory(name = 'CLAUDE.md') {
   if (!state.project) return toast('Ouvre d’abord un projet.', true);
   closePop();
-  showModal(`Mémoire · ${state.project.name}`);
+  if (name === 'rules') name = 'CLAUDE.md';
+  if (name === '__new__') {
+    const n = prompt('Nom de la nouvelle règle (ex. : style-code, tests, roblox) :', '');
+    if (!n?.trim()) return;
+    name = `.cursor/rules/${n.trim().replace(/[^\w .-]/g, '-').slice(0, 50)}.mdc`;
+  }
+  showModal(`Règles du projet · ${state.project.name}`);
   mBody.innerHTML = '<p class="note">Chargement…</p>';
   try {
-    const m = await api(`/api/projects/memory?path=${encodeURIComponent(state.project.path)}&name=${encodeURIComponent(name)}`);
-    mBody.innerHTML = `<div class="seg" style="margin-bottom:12px">${['CLAUDE.md', 'AGENTS.md'].map((n) => `<button type="button" data-open-memory="${n}" class="${n === name ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <p class="note" style="margin:0 0 10px">${name === 'CLAUDE.md' ? 'Claude Code relit ce fichier au début de chaque session : décris le projet, les commandes utiles et tes conventions.' : 'Codex (ChatGPT) lit AGENTS.md de la même façon.'} ${m.exists ? '' : '<b>Le fichier n’existe pas encore.</b> Astuce : <code>/init</code> le fait écrire par Claude.'}</p>
-      <textarea class="textarea mono tall" id="memText" spellcheck="false" placeholder="# Mon projet\n\n- Lancer : …\n- Conventions : …">${esc(m.text)}</textarea>`;
+    const [m, rules] = await Promise.all([
+      api(`/api/projects/memory?path=${encodeURIComponent(state.project.path)}&name=${encodeURIComponent(name)}`),
+      api(`/api/projects/rules?path=${encodeURIComponent(state.project.path)}`).catch(() => []),
+    ]);
+    const mdc = rules.filter((r) => r.file.startsWith('.cursor/rules/')).map((r) => r.file);
+    if (name.startsWith('.cursor/rules/') && !mdc.includes(name)) mdc.push(name);
+    const exists = new Set(rules.map((r) => r.file));
+    const tab = (n) => `<button type="button" data-open-memory="${esc(n)}" class="${n === name ? 'on' : ''}">${esc(n.replace('.cursor/rules/', ''))}${exists.has(n) ? '' : ' <i class="muted">·</i>'}</button>`;
+    const isRule = name.startsWith('.cursor/rules/');
+    const tpl = isRule && !m.exists ? `---\ndescription: \nglobs: \nalwaysApply: true\n---\n\n- ` : '';
+    mBody.innerHTML = `<div class="seg wrap" style="margin-bottom:10px">${Object.keys(RULE_FILES).map(tab).join('')}${mdc.map(tab).join('')}
+        <button type="button" data-open-memory="__new__">+ Règle</button></div>
+      <p class="note" style="margin:0 0 10px"><b>Toutes tes IA suivent ces règles</b>, comme les « Rules » de Cursor : chaque outil lit ses fichiers habituels, et Relais donne les autres à celles qui ne les lisent pas (ChatGPT, Gemini, Grok, IA locales, Cursor…).
+        ${isRule ? 'Règle Cursor : <code>alwaysApply: true</code> = toujours ; sinon <code>globs</code> (ex. <code>src/**/*.ts</code>) ou une <code>description</code> de quand l’appliquer. Vide le texte pour la supprimer.' : `${esc(RULE_FILES[name] || '')}.`}
+        ${m.exists ? '' : ' <b>Le fichier n’existe pas encore.</b>'}${name === 'CLAUDE.md' && !m.exists ? ' Astuce : <code>/init</code> le fait écrire par Claude.' : ''}</p>
+      <textarea class="textarea mono tall" id="memText" spellcheck="false" placeholder="# Mon projet\n\n- Lancer : …\n- Conventions : …">${esc(m.text || tpl)}</textarea>`;
     mFoot.hidden = false;
     mFoot.innerHTML = `<button type="button" class="btn primary" data-save-memory="${esc(name)}">${I.check}Enregistrer</button><span class="note right mono-note">${esc(m.path)}</span>`;
   } catch (e) { mBody.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
@@ -3265,8 +3329,9 @@ async function openMemory(name = 'CLAUDE.md') {
 async function saveMemory(btn) {
   try {
     await api('/api/projects/memory', { method: 'PUT', body: { path: state.project.path, name: btn.dataset.saveMemory, text: $('#memText').value } });
-    toast(`${btn.dataset.saveMemory} enregistré`);
+    toast(`${btn.dataset.saveMemory.replace('.cursor/rules/', '')} enregistré`);
     refreshGit();
+    openMemory(btn.dataset.saveMemory);
   } catch (e) { toast(e.message, true); }
 }
 
@@ -4505,3 +4570,369 @@ $('#designViewer').addEventListener('click', async (e) => {
   input.focus();
   loadConnectors().then(() => { if ($('.empty', inner)) renderEmpty(); });
 })();
+
+/* ==========================================================================
+   Comme dans Cursor : modifications à garder ou annuler, points de restauration,
+   explorateur et éditeur de code, édition sur sélection (Ctrl K), règles du projet
+   ========================================================================== */
+const CH_STATE = { kept: 'gardé', reverted: 'annulé', partial: 'en partie annulé' };
+
+function changesEl(ch, index) {
+  const files = ch.files || [];
+  const st = ch.state || {};
+  const add = files.reduce((n, f) => n + (f.add || 0), 0);
+  const del = files.reduce((n, f) => n + (f.del || 0), 0);
+  const open = files.filter((f) => !st[f.path]).length;
+  return h(`<div class="changes-card" data-ch-sha="${esc(ch.sha)}" data-ch-index="${index ?? ''}">
+    <div class="ch-head">${I.file}<b>${files.length} fichier${files.length > 1 ? 's' : ''} modifié${files.length > 1 ? 's' : ''}</b>
+      <span class="fr-stat">${add ? `<em class="add">+${add}</em>` : ''}${del ? `<em class="del">−${del}</em>` : ''}</span>
+      <span class="ch-actions">${open ? `<button type="button" class="btn sm" data-ch-keep-all>${I.check}Tout garder</button>
+        <button type="button" class="btn sm danger-ghost" data-ch-undo-all title="Revenir à l’état d’avant ce message">${I.retry}Tout annuler</button>` : '<span class="note">Vérifié</span>'}</span></div>
+    <div class="ch-files">${files.map((f) => `<div class="ch-file" data-ch-file="${esc(f.path)}" data-state="${esc(st[f.path] || '')}">
+      <div class="ch-row"><button type="button" class="ch-name" data-ch-toggle title="Voir les modifications">${I.chev}<span class="git-code" data-code="${esc(f.code || 'M')}">${esc(f.code || 'M')}</span>
+        <b>${esc(f.path.split('/').pop())}</b><span>${esc(f.path)}</span></button>
+        <span class="fr-stat">${f.add ? `<em class="add">+${f.add}</em>` : ''}${f.del ? `<em class="del">−${f.del}</em>` : ''}</span>
+        <span class="ch-state">${esc(CH_STATE[st[f.path]] || '')}</span>
+        <span class="ch-btns">${f.code !== 'D' ? `<button type="button" class="icon-btn sm" data-ch-open title="Ouvrir dans l’éditeur">${I.code}</button>` : ''}
+          <button type="button" class="btn xs" data-ch-keep>Garder</button><button type="button" class="btn xs" data-ch-undo>Annuler</button></span></div>
+      <div class="ch-diff" hidden></div></div>`).join('')}</div></div>`);
+}
+
+function hunkHtml(hunk, i, canSplit) {
+  const lines = hunk.replace(/\n$/, '').split('\n');
+  const head = lines.shift();
+  return `<div class="hunk" data-hunk="${i}"><div class="hunk-head"><span class="mono-note">${esc(head)}</span>
+    ${canSplit ? `<button type="button" class="btn xs" data-ch-hunk="${i}" title="Annuler seulement ce bloc">Refuser ce bloc</button>` : ''}</div>
+    <pre>${lines.slice(0, 400).map((l) => { const k = l[0] === '+' ? 'add' : l[0] === '-' ? 'del' : 'ctx'; return `<span class="dl ${k}">${k === 'del' ? '−' : k === 'add' ? '+' : ' '} ${esc(l.slice(1))}</span>`; }).join('')}${lines.length > 400 ? `<span class="dl ctx">… ${lines.length - 400} lignes de plus</span>` : ''}</pre></div>`;
+}
+
+function chCtx(el) {
+  const card = el.closest('.changes-card');
+  const row = el.closest('.ch-file');
+  const index = card.dataset.chIndex;
+  return { card, row, file: row?.dataset.chFile, body: { path: state.project?.path, sha: card.dataset.chSha, conversationId: state.convId, index: index === '' ? undefined : Number(index) } };
+}
+
+async function loadHunks(row, ctx) {
+  const box = $('.ch-diff', row);
+  box.innerHTML = '<p class="note"><span class="spinner"></span> Lecture…</p>';
+  try {
+    const d = await api(`/api/projects/changes/diff?path=${encodeURIComponent(ctx.body.path)}&sha=${ctx.body.sha}&file=${encodeURIComponent(ctx.file)}`);
+    box.innerHTML = d.binary ? '<p class="note">Fichier binaire (image, archive…) : pas d’aperçu.</p>'
+      : d.hunks.length ? d.hunks.map((x, i) => hunkHtml(x, i, d.hunks.length > 1 && !/^(new|deleted) file mode/m.test(d.header))).join('')
+        : '<p class="note">Plus aucune différence avec l’état d’avant ce message.</p>';
+  } catch (e) { box.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
+}
+
+function setChState(row, st) {
+  row.dataset.state = st;
+  $('.ch-state', row).textContent = CH_STATE[st] || '';
+  const card = row.closest('.changes-card');
+  const msg = state.convMessages[Number(card.dataset.chIndex)];
+  if (msg?.changes) { msg.changes.state ||= {}; msg.changes.state[row.dataset.chFile] = st; }
+  // Tous les fichiers vérifiés : plus besoin des boutons globaux
+  if (!$$('.ch-file', card).some((r) => !r.dataset.state)) $('.ch-actions', card).innerHTML = '<span class="note">Vérifié</span>';
+}
+
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  let el;
+  if ((el = t.closest('[data-ch-toggle]'))) {
+    const ctx = chCtx(el);
+    const box = $('.ch-diff', ctx.row);
+    box.hidden = !box.hidden;
+    ctx.row.classList.toggle('open', !box.hidden);
+    if (!box.hidden) loadHunks(ctx.row, ctx);
+    return;
+  }
+  if ((el = t.closest('[data-ch-open]'))) { const ctx = chCtx(el); return openEditorFile(ctx.file); }
+  if ((el = t.closest('[data-ch-keep]'))) {
+    const ctx = chCtx(el);
+    api('/api/projects/changes/keep', { method: 'POST', body: { ...ctx.body, file: ctx.file } }).catch(() => {});
+    return setChState(ctx.row, 'kept');
+  }
+  if ((el = t.closest('[data-ch-undo]'))) {
+    const ctx = chCtx(el);
+    try {
+      await api('/api/projects/changes/revert', { method: 'POST', body: { ...ctx.body, file: ctx.file } });
+      setChState(ctx.row, 'reverted');
+      if (!$('.ch-diff', ctx.row).hidden) loadHunks(ctx.row, ctx);
+      toast(`${ctx.file.split('/').pop()} : modifications annulées`);
+      afterFilesChanged([ctx.file]);
+    } catch (err) { toast(err.message, true); }
+    return;
+  }
+  if ((el = t.closest('[data-ch-hunk]'))) {
+    const ctx = chCtx(el);
+    el.disabled = true;
+    try {
+      const r = await api('/api/projects/changes/revert', { method: 'POST', body: { ...ctx.body, file: ctx.file, hunk: Number(el.dataset.chHunk) } });
+      setChState(ctx.row, r.left ? 'partial' : 'reverted');
+      loadHunks(ctx.row, ctx);
+      afterFilesChanged([ctx.file]);
+    } catch (err) { el.disabled = false; toast(err.message, true); }
+    return;
+  }
+  if ((el = t.closest('[data-ch-keep-all]'))) {
+    const ctx = chCtx(el);
+    api('/api/projects/changes/keep', { method: 'POST', body: ctx.body }).catch(() => {});
+    $$('.ch-file', ctx.card).forEach((r) => { if (!r.dataset.state) setChState(r, 'kept'); });
+    $('.ch-actions', ctx.card).innerHTML = '<span class="note">Vérifié</span>';
+    return toast('Modifications gardées');
+  }
+  if ((el = t.closest('[data-ch-undo-all]'))) {
+    const ctx = chCtx(el);
+    if (!confirm('Annuler toutes les modifications de cette réponse ? Les fichiers reviennent à leur état d’avant ce message.')) return;
+    try {
+      const r = await api('/api/projects/changes/restore', { method: 'POST', body: ctx.body });
+      $$('.ch-file', ctx.card).forEach((x) => setChState(x, 'reverted'));
+      $('.ch-actions', ctx.card).innerHTML = '<span class="note">Annulé</span>';
+      toast(`${r.count} fichier${r.count > 1 ? 's' : ''} restauré${r.count > 1 ? 's' : ''}`);
+      afterFilesChanged();
+    } catch (err) { toast(err.message, true); }
+    return;
+  }
+  if ((el = t.closest('[data-restore-cp]'))) {
+    const msgEl = el.closest('.msg');
+    const m = state.convMessages[Number(msgEl.dataset.index)];
+    if (!m?.checkpoint || !state.project) return;
+    if (!confirm('Revenir au point de restauration d’avant ce message ? Tout ce que les IA ont modifié dans le projet depuis sera annulé (la conversation, elle, est gardée).')) return;
+    try {
+      const r = await api('/api/projects/changes/restore', { method: 'POST', body: { path: state.project.path, sha: m.checkpoint } });
+      toast(r.count ? `Projet restauré (${r.count} fichier${r.count > 1 ? 's' : ''})` : 'Le projet était déjà dans cet état');
+      afterFilesChanged();
+    } catch (err) { toast(err.message, true); }
+  }
+});
+
+/** Après une restauration : Git, panneau et éditeur se remettent à jour. */
+function afterFilesChanged(files) {
+  refreshGit();
+  if (ed.file && !ed.dirty && (!files || files.includes(ed.file))) openEditorFile(ed.file, { keepScroll: true, force: true });
+  if (state.panelOpen && state.inspTab === 'files') renderTreeSoon();
+}
+
+function checkpointBtn() {
+  return `<button type="button" data-restore-cp title="Revenir à l’état des fichiers d’avant ce message">${I.retry}<span>Restaurer</span></button>`;
+}
+
+/* ---------- Explorateur et éditeur ---------- */
+const ed = { file: null, cm: null, text: '', mtime: 0, dirty: false, open: new Set(['']), tree: new Map(), cmLoad: null };
+
+function loadCodeMirror() {
+  if (window.CodeMirror) return Promise.resolve(true);
+  if (ed.cmLoad) return ed.cmLoad;
+  // CodeMirror 5 est livré avec Relais (public/vendor) : l'éditeur marche aussi hors ligne
+  const l = document.createElement('link');
+  l.rel = 'stylesheet';
+  l.href = '/vendor/codemirror/codemirror.css';
+  document.head.append(l);
+  ed.cmLoad = new Promise((ok) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/codemirror/codemirror.js';
+    s.onload = () => ok(!!window.CodeMirror);
+    s.onerror = () => ok(false);
+    document.head.append(s);
+  });
+  return ed.cmLoad;
+}
+
+const MODE_OF = { js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'text/typescript', tsx: 'text/typescript', json: 'application/json', css: 'css', scss: 'text/x-scss', html: 'htmlmixed', htm: 'htmlmixed', xml: 'xml', svg: 'xml', py: 'python', lua: 'lua', luau: 'lua', c: 'text/x-csrc', h: 'text/x-csrc', cpp: 'text/x-c++src', hpp: 'text/x-c++src', cs: 'text/x-csharp', java: 'text/x-java', kt: 'text/x-kotlin', md: 'markdown', sh: 'shell', bash: 'shell', ps1: 'shell', yml: 'yaml', yaml: 'yaml', sql: 'sql', go: 'go', rs: 'rust', php: 'php' };
+const modeOf = (f) => MODE_OF[(String(f).split('.').pop() || '').toLowerCase()] || null;
+
+let treeTimer = null;
+function renderTreeSoon() { clearTimeout(treeTimer); treeTimer = setTimeout(() => { ed.tree.clear(); renderFilesTab(); }, 250); }
+
+async function treeLevel(dir) {
+  if (!ed.tree.has(dir)) ed.tree.set(dir, await api(`/api/projects/tree?path=${encodeURIComponent(state.project.path)}&dir=${encodeURIComponent(dir)}`).catch(() => []));
+  return ed.tree.get(dir);
+}
+
+async function treeHtml(dir, depth) {
+  const items = await treeLevel(dir);
+  let out = '';
+  for (const it of items) {
+    const open = it.dir && ed.open.has(it.path);
+    out += `<button type="button" class="tree-item ${it.dir ? 'is-dir' : ''} ${open ? 'open' : ''} ${ed.file === it.path ? 'on' : ''}" style="--d:${depth}" data-tree="${esc(it.path)}" data-dir="${it.dir ? 1 : ''}" title="${esc(it.path)}">
+      ${it.dir ? I.chev : ''}${it.dir ? I.folder : I.file}<span>${esc(it.name)}</span></button>`;
+    if (open) out += await treeHtml(it.path, depth + 1);
+  }
+  return out || (depth === 0 ? '<p class="note">Dossier vide.</p>' : '');
+}
+
+/** Autre projet : on repart d'un explorateur vide. Renvoie true si le projet a changé. */
+function syncEdProject() {
+  const p = state.project?.path || null;
+  if (ed.project === p) return false;
+  Object.assign(ed, { project: p, file: null, cm: null, edEl: null, dirty: false, open: new Set(['']) });
+  ed.tree.clear();
+  $('#inspector').classList.remove('wide');
+  return true;
+}
+
+async function renderFilesTab() {
+  const body = $('#inspBody');
+  if (!state.panelOpen || state.inspTab !== 'files') return;
+  $('#inspector').classList.toggle('wide', !!ed.file);
+  if (!state.project) { body.innerHTML = `<div class="insp-empty">${I.folder}<b>Pas de projet ouvert</b><span>Ouvre un dossier pour parcourir et modifier ses fichiers.</span></div>`; return; }
+  if (syncEdProject()) body.innerHTML = '';
+  if (!body.querySelector('.files-tab')) {
+    body.innerHTML = `<div class="files-tab"><div class="ft-tree"><div class="ft-tools"><b>${esc(state.project.name)}</b>
+        <button type="button" class="icon-btn sm right" data-tree-new title="Nouveau fichier">${I.edit}</button>
+        <button type="button" class="icon-btn sm" data-tree-refresh title="Actualiser">${I.retry}</button>
+        <button type="button" class="icon-btn sm" data-open-rules title="Règles du projet (toutes les IA)">${I.memory}</button></div>
+        <div class="ft-list"></div></div><div class="ft-editor" hidden></div></div>`;
+    // L'éditeur ouvert (et ce qui n'est pas enregistré) est gardé quand on change d'onglet
+    if (ed.edEl && ed.file) { $('.ft-editor', body).replaceWith(ed.edEl); setTimeout(() => ed.cm?.refresh?.(), 30); }
+  }
+  const list = $('.ft-list', body);
+  const scroll = list.scrollTop;
+  list.innerHTML = await treeHtml('', 0);
+  list.scrollTop = scroll;
+}
+
+async function openEditorFile(file, { keepScroll = false, force = false } = {}) {
+  if (!state.project || !file) return;
+  if (syncEdProject()) $('#inspBody').innerHTML = '';
+  if (ed.dirty && ed.file && ed.file !== file && !confirm(`${ed.file.split('/').pop()} n’est pas enregistré. Ouvrir quand même ${file.split('/').pop()} ?`)) return;
+  if (!state.panelOpen || state.inspTab !== 'files') { state.inspTab = 'files'; setPanel(true); }
+  let d;
+  try { d = await api(`/api/projects/file?path=${encodeURIComponent(state.project.path)}&file=${encodeURIComponent(file)}`); }
+  catch (e) { return toast(e.message, true); }
+  if (ed.file === file && ed.dirty && !force) return;
+  // Déplie les dossiers parents dans l'arborescence
+  file.split('/').slice(0, -1).reduce((acc, part) => { const p = acc ? `${acc}/${part}` : part; ed.open.add(p); return p; }, '');
+  const prevScroll = keepScroll && ed.cm ? ed.cm.getScrollInfo() : null;
+  ed.file = file; ed.text = d.text ?? ''; ed.mtime = d.mtime; ed.dirty = false;
+  await renderFilesTab();
+  const box = $('.ft-editor');
+  box.hidden = false;
+  ed.edEl = box;
+  box.innerHTML = `<div class="ed-head"><span class="ed-name">${I.code}<b>${esc(file.split('/').pop())}</b><span class="mono-note">${esc(file)}</span></span>
+      <span class="ed-dirty" hidden>●</span>
+      <button type="button" class="btn xs" data-ed-k title="Modifier la sélection avec l’IA (Ctrl K)">${I.spark}Ctrl K</button>
+      <button type="button" class="btn xs primary" data-ed-save title="Enregistrer (Ctrl S)">Enregistrer</button>
+      <button type="button" class="icon-btn sm" data-ed-close title="Fermer">${I.chevRight}</button></div>
+    <div class="ed-body"></div>`;
+  const host = $('.ed-body', box);
+  if (d.binary || d.tooBig) { host.innerHTML = `<p class="note pad">${d.binary ? 'Fichier binaire : pas d’édition ici.' : 'Fichier trop gros pour l’éditeur (plus de 2 Mo).'}</p>`; ed.cm = null; return; }
+  const ok = await loadCodeMirror();
+  if (ok && window.CodeMirror) {
+    ed.cm = window.CodeMirror(host, { value: ed.text, mode: modeOf(file), lineNumbers: true, indentUnit: 2, tabSize: 2, lineWrapping: false, extraKeys: { 'Ctrl-S': () => {}, 'Cmd-S': () => {}, 'Ctrl-K': () => {}, 'Cmd-K': () => {} } });
+    ed.cm.on('change', () => markDirty(ed.cm.getValue() !== ed.text));
+    if (prevScroll) ed.cm.scrollTo(prevScroll.left, prevScroll.top);
+    setTimeout(() => ed.cm?.refresh(), 30);
+  } else {
+    // Sans connexion au CDN : simple zone de texte
+    host.innerHTML = '<textarea class="ed-plain" spellcheck="false"></textarea>';
+    const ta = $('textarea', host);
+    ta.value = ed.text;
+    ta.addEventListener('input', () => markDirty(ta.value !== ed.text));
+    ed.cm = {
+      plain: ta, getValue: () => ta.value, setValue: (v) => { ta.value = v; }, focus: () => ta.focus(),
+      getSelection: () => ta.value.slice(ta.selectionStart, ta.selectionEnd),
+      selRange: () => [ta.selectionStart, ta.selectionEnd],
+    };
+  }
+}
+
+function markDirty(v) { ed.dirty = v; const d = $('.ed-dirty'); if (d) d.hidden = !v; }
+
+async function saveEditor() {
+  if (!ed.cm || !ed.file) return;
+  const text = ed.cm.getValue();
+  try {
+    const r = await api('/api/projects/file', { method: 'PUT', body: { path: state.project.path, file: ed.file, text, mtime: ed.mtime } });
+    ed.text = text; ed.mtime = r.mtime; markDirty(false);
+    toast(`${ed.file.split('/').pop()} enregistré`);
+    refreshGit();
+  } catch (e) {
+    if (/modifié entre-temps/.test(e.message) && confirm(`${e.message}\n\nÉcraser quand même avec ta version ?`)) {
+      ed.mtime = 0;
+      return saveEditor();
+    }
+    toast(e.message, true);
+  }
+}
+
+/* ---------- Ctrl K : modifier la sélection avec l'IA ---------- */
+function selectionInfo() {
+  const cm = ed.cm;
+  const text = cm.getValue();
+  let from; let to;
+  if (cm.plain) [from, to] = cm.selRange();
+  else { const a = cm.indexFromPos(cm.getCursor('from')); const b = cm.indexFromPos(cm.getCursor('to')); from = a; to = b; }
+  // Sans sélection : la ligne courante
+  if (from === to) {
+    from = text.lastIndexOf('\n', from - 1) + 1;
+    const end = text.indexOf('\n', to);
+    to = end < 0 ? text.length : end + 1;
+  }
+  return { from, to, before: text.slice(Math.max(0, from - 4000), from), selection: text.slice(from, to), after: text.slice(to, to + 4000) };
+}
+
+function openInlineEdit() {
+  if (!ed.cm || !ed.file) return;
+  $('.ik-box')?.remove();
+  const sel = selectionInfo();
+  const coder = state.project && AGENTS[state.mode] && state.mode !== 'perplexity' ? state.mode : 'claude';
+  const box = h(`<div class="ik-box"><div class="ik-row">${I.spark}<input class="input" placeholder="Que doit faire l’IA sur ${sel.selection.split('\n').length - (sel.selection.endsWith('\n') ? 1 : 0)} ligne(s) sélectionnée(s) ? (Entrée)" spellcheck="false">
+      <span class="note">${esc(CODER_NAME[coder] || AGENTS[coder].name)}</span><button type="button" class="icon-btn sm" data-ik-close title="Fermer (Échap)">✕</button></div>
+    <div class="ik-result" hidden></div></div>`);
+  $('.ft-editor .ed-head').after(box);
+  const input = $('input', box);
+  input.focus();
+  const close = () => { box.remove(); ed.cm?.focus(); };
+  $('[data-ik-close]', box).onclick = close;
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Escape') return close();
+    if (e.key !== 'Enter' || !input.value.trim()) return;
+    input.disabled = true;
+    const res = $('.ik-result', box);
+    res.hidden = false;
+    res.innerHTML = '<p class="note"><span class="spinner"></span> L’IA réécrit la sélection…</p>';
+    try {
+      const r = await api('/api/projects/inline-edit', { method: 'POST', body: { path: state.project.path, file: ed.file, before: sel.before, selection: sel.selection, after: sel.after, instruction: input.value.trim(), agent: coder } });
+      res.innerHTML = `${diffHtml({ path: `${ed.file} · proposé par ${AGENTS[r.agent]?.name || ''}`, old: sel.selection.replace(/\n$/, ''), new: r.code.replace(/\n$/, '') })}
+        <div class="perm-actions"><button type="button" class="btn sm primary" data-ik-accept>${I.check}Accepter</button><button type="button" class="btn sm" data-ik-reject>Refuser</button></div>`;
+      $('[data-ik-accept]', res).onclick = () => {
+        const cur = ed.cm.getValue();
+        if (cur.slice(sel.from, sel.to) !== sel.selection) { toast('Le code a changé entre-temps : relance Ctrl K.', true); return close(); }
+        if (ed.cm.plain) ed.cm.setValue(cur.slice(0, sel.from) + r.code + cur.slice(sel.to));
+        else ed.cm.replaceRange(r.code, ed.cm.posFromIndex(sel.from), ed.cm.posFromIndex(sel.to));
+        markDirty(ed.cm.getValue() !== ed.text);
+        close();
+        toast('Modification appliquée : Ctrl S pour enregistrer');
+      };
+      $('[data-ik-reject]', res).onclick = close;
+    } catch (err) { res.innerHTML = `<p class="note">${esc(err.message)}</p>`; input.disabled = false; input.focus(); }
+  });
+}
+
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  let el;
+  if ((el = t.closest('[data-tree]'))) {
+    const p = el.dataset.tree;
+    if (el.dataset.dir) { if (ed.open.has(p)) ed.open.delete(p); else ed.open.add(p); return renderFilesTab(); }
+    return openEditorFile(p);
+  }
+  if (t.closest('[data-tree-refresh]')) { ed.tree.clear(); return renderFilesTab(); }
+  if (t.closest('[data-tree-new]')) {
+    const name = prompt('Nom du nouveau fichier (chemin relatif au projet) :', '');
+    if (!name?.trim()) return;
+    try { await api('/api/projects/file', { method: 'PUT', body: { path: state.project.path, file: name.trim(), text: '' } }); ed.tree.clear(); openEditorFile(name.trim().replace(/\\/g, '/')); }
+    catch (err) { toast(err.message, true); }
+    return;
+  }
+  if (t.closest('[data-ed-save]')) return saveEditor();
+  if (t.closest('[data-ed-k]')) return openInlineEdit();
+  if (t.closest('[data-ed-close]')) {
+    if (ed.dirty && !confirm('Fermer sans enregistrer ?')) return;
+    ed.file = null; ed.cm = null; ed.edEl = null; ed.dirty = false;
+    $('.ft-editor').hidden = true;
+    $('#inspector').classList.remove('wide');
+    return renderFilesTab();
+  }
+  if (t.closest('[data-open-rules]')) return openMemory('rules');
+});

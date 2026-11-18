@@ -9,10 +9,13 @@ import { listDesigns, readDesign, deleteDesign, exportDesign } from './lib/desig
 import { RELAYS, getRelay } from './lib/relays.js';
 import { detectIntent, stripMentions, withEngine } from './public/intent.js';
 import { connectorStatus, install, installJob, startLogin, loginState, submitLoginCode, cancelLogin, logout, invalidateStatus, slim } from './lib/connectors.js';
-import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent, PERMISSION_TOOL } from './lib/orchestrator.js';
+import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent, inlineEdit, PERMISSION_TOOL } from './lib/orchestrator.js';
+import { createCheckpoint, changesSince, fileDiff, revertFile, revertHunk, restoreCheckpoint } from './lib/checkpoints.js';
+import { projectRules } from './lib/rules.js';
+import { cursorAsk } from './lib/cursor.js';
 import { testServer, closeAll as closeMcp } from './lib/mcp-client.js';
 import { PERMS, describeTool } from './lib/coders.js';
-import { listProjects, touchProject, forgetProject, pickFolder, revealFolder, detectType } from './lib/projects.js';
+import { listProjects, touchProject, forgetProject, pickFolder, revealFolder, detectType, validateProject } from './lib/projects.js';
 import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
@@ -20,7 +23,7 @@ import { startHousekeeping, cleanup, storageReport } from './lib/housekeeping.js
 import { transcribe, voiceEngines } from './lib/voice.js';
 import { orKeyInfo, AUTH_KEY } from './lib/llm.js';
 import { readMemory as readUserMemory, writeMemory as writeUserMemory } from './lib/memory.js';
-import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
+import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, projectTree, readProjectFile, writeProjectFile, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
 
 const PORT = Number(getConfig().PORT) || 4321;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
@@ -240,6 +243,13 @@ async function handleChat(req, res) {
   const agent = isShell ? 'shell' : directRelay ? relay.engine : inProject ? effMode : (relay || effMode === 'claude') ? 'claude' : effMode;
   send('route', { agent, relay: relay?.label || null, direct: !!directRelay, project: inProject, fallback: !inProject && (effMode !== mode || (directRelay && !direct0)) });
   let error = null;
+  // Point de restauration avant que l'IA ne touche au projet (comme dans Cursor)
+  const userMsg = conv.messages.at(-1);
+  let checkpoint = null;
+  if (inProject && !isShell && !isCompact && !directRelay && (conv.perm || 'ask') !== 'read') {
+    checkpoint = await createCheckpoint(conv.project, `Avant : ${String(text).slice(0, 120)}`);
+    if (checkpoint) { userMsg.checkpoint = checkpoint.sha; send('checkpoint', { sha: checkpoint.sha }); }
+  }
 
   try {
     if (isShell) {
@@ -256,7 +266,7 @@ async function handleChat(req, res) {
     else if (directRelay) await runRelayDirect({ cfg: inProject ? { ...cfg, PROJECT_DIR: conv.project, imageExport: true } : cfg, relay, text: stripMentions(text), turn, signal: controller.signal });
     else if (inProject) {
       if (agent === 'perplexity') throw new Error('Perplexity sert à chercher sur le web : il ne code pas dans un projet. Choisis Claude, ChatGPT, Grok ou Gemini (Claude peut lui confier des recherches).');
-      if (!av[agent]) throw new Error(`${{ chatgpt: 'ChatGPT (Codex)', gemini: 'Gemini' }[agent] || NAMES[agent]} n’est pas connecté. Réglages → Connexions.`);
+      if (!av[agent] && !av.cursorCode?.[agent]) throw new Error(`${{ chatgpt: 'ChatGPT (Codex)', gemini: 'Gemini' }[agent] || NAMES[agent]} n’est pas connecté. Réglages → Connexions.`);
       await runProject({
         cfg, conv, agent, perm: isCompact ? 'read' : conv.perm || 'ask', effort: isCompact ? 'normal' : effort, forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL,
         askPermission: makeAsker(conv.id, send, controller.signal),
@@ -268,7 +278,13 @@ async function handleChat(req, res) {
     if (!controller.signal.aborted) console.error('[chat]', e.message);
   }
 
-  conv.messages.push({ role: 'assistant', agent, skill: forcedSkill?.slug, relay: relay?.id, parts: turn.parts, error, ms: Date.now() - started, at: Date.now(), ...(turn.stats ? { stats: turn.stats } : {}), ...(command ? { command } : {}) });
+  // Fichiers modifiés pendant ce message : à garder ou annuler, fichier par fichier ou bloc par bloc
+  let changes = null;
+  if (checkpoint) {
+    const files = await changesSince(conv.project, checkpoint.sha).catch(() => []);
+    if (files.length) { changes = { sha: checkpoint.sha, files, state: {} }; send('changes', changes); }
+  }
+  conv.messages.push({ role: 'assistant', agent, skill: forcedSkill?.slug, relay: relay?.id, parts: turn.parts, error, ms: Date.now() - started, at: Date.now(), ...(turn.stats ? { stats: turn.stats } : {}), ...(command ? { command } : {}), ...(changes ? { changes } : {}) });
   // /compact : le résumé remplace l'historique, les sessions des agents repartent de zéro.
   if (isCompact && !error) {
     const summary = turn.parts.filter((x) => x.type === 'text').map((x) => x.text).join('\n').trim();
@@ -290,6 +306,10 @@ async function testConnector(id) {
     await runClaude({ cfg: { ...cfg, maxSteps: 2 }, conv, turn: sink, signal: AbortSignal.timeout(120000), baseUrl: BASE_URL });
     const text = sink.parts.filter((p) => p.type === 'text').map((p) => p.text).join('').trim();
     return { ok: true, reply: text.slice(0, 200), ms: Date.now() - started };
+  }
+  if (id === 'cursor') {
+    const reply = await cursorAsk({ cfg, agent: 'chatgpt', prompt: 'Test de connexion : réponds uniquement « OK ».', signal: AbortSignal.timeout(180000) });
+    return { ok: true, reply: String(reply).slice(0, 200), ms: Date.now() - started };
   }
   const provider = id === 'codex' ? 'chatgpt' : id;
   const reply = await askAgent({ cfg, provider, prompt: provider === 'perplexity' ? 'Test de connexion : quelle est la date du jour ? Réponds en une phrase courte.' : 'Test de connexion : réponds uniquement « OK ».', signal: AbortSignal.timeout(120000) });
@@ -336,10 +356,10 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/connectors' && m === 'GET') {
       const status = await connectorStatus(getConfig(), { force: url.searchParams.has('force') });
-      for (const id of ['claude', 'codex', 'grok', 'gemini']) { status[id].job = installJob(id); status[id].login = loginState(id); }
+      for (const id of ['claude', 'codex', 'grok', 'gemini', 'cursor']) { if (status[id]) { status[id].job = installJob(id); status[id].login = loginState(id); } }
       return json(res, 200, status);
     }
-    let r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini)\/login(\/code)?$/);
+    let r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|cursor)\/login(\/code)?$/);
     if (r) {
       const [, id, isCode] = r;
       if (m === 'GET') return json(res, 200, loginState(id) || {});
@@ -361,7 +381,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { settings: publicSettings(), available: available(getConfig()) });
     }
     if (p === '/api/connectors/slim' && m === 'POST') { const msg = slim(); invalidateStatus(); return json(res, 200, { message: msg }); }
-    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|perplexity|local)\/(install|logout|test)$/);
+    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|cursor|perplexity|local)\/(install|logout|test)$/);
     if (r && m === 'POST') {
       const [, id, action] = r;
       if (['perplexity', 'local'].includes(id) && action !== 'test') return json(res, 400, { error: 'Perplexity n’a pas d’outil à installer.' });
@@ -455,6 +475,69 @@ const server = http.createServer(async (req, res) => {
         if (sub === 'memory' && m === 'GET') return json(res, 200, readMemory(dir, url.searchParams.get('name') || 'CLAUDE.md'));
         if (sub === 'memory' && m === 'PUT') return json(res, 200, writeMemory(dir, body.name || 'CLAUDE.md', body.text));
       } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    /* Modifications des IA : points de restauration, garder / annuler */
+    if (p.startsWith('/api/projects/changes')) {
+      const body = m === 'GET' ? {} : await readBody(req);
+      const q = (k) => url.searchParams.get(k) ?? body[k];
+      try {
+        const dir = validateProject(q('path'));
+        const sha = String(q('sha') || '');
+        if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('Point de restauration invalide.');
+        const sub = p.slice('/api/projects/changes'.length);
+        // Mémorise la décision dans la conversation, pour la retrouver en rouvrant la discussion
+        const mark = (file, st) => {
+          const c = body.conversationId && findConv(body.conversationId);
+          const msg = c?.messages?.[Number(body.index)];
+          if (!msg?.changes || msg.changes.sha !== sha) return;
+          msg.changes.state ||= {};
+          if (file) msg.changes.state[file] = st; else for (const f of msg.changes.files) msg.changes.state[f.path] = st;
+          storeConv(c);
+        };
+        if (sub === '' && m === 'GET') return json(res, 200, { files: await changesSince(dir, sha) });
+        if (sub === '/diff' && m === 'GET') return json(res, 200, await fileDiff(dir, sha, q('file')));
+        if (sub === '/keep' && m === 'POST') { mark(body.file || null, 'kept'); return json(res, 200, { ok: true }); }
+        if (sub === '/revert' && m === 'POST') {
+          if (body.hunk !== undefined && body.hunk !== null) {
+            await revertHunk(dir, sha, body.file, body.hunk);
+            const left = (await fileDiff(dir, sha, body.file)).hunks.length;
+            mark(body.file, left ? 'partial' : 'reverted');
+            return json(res, 200, { ok: true, left });
+          }
+          await revertFile(dir, sha, body.file);
+          mark(body.file, 'reverted');
+          return json(res, 200, { ok: true });
+        }
+        if (sub === '/restore' && m === 'POST') {
+          const n = await restoreCheckpoint(dir, sha);
+          mark(null, 'reverted');
+          return json(res, 200, { ok: true, count: n });
+        }
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    /* Explorateur, éditeur et Ctrl K */
+    if (['/api/projects/tree', '/api/projects/file', '/api/projects/rules', '/api/projects/inline-edit'].includes(p)) {
+      const body = m === 'GET' ? {} : await readBody(req);
+      const dir = url.searchParams.get('path') || body.path;
+      try {
+        if (p === '/api/projects/tree') return json(res, 200, projectTree(dir, url.searchParams.get('dir') || ''));
+        if (p === '/api/projects/rules') return json(res, 200, projectRules(validateProject(dir)).map(({ file, title, when, text: t }) => ({ file, title, when, size: t.length })));
+        if (p === '/api/projects/file' && m === 'GET') return json(res, 200, readProjectFile(dir, url.searchParams.get('file')));
+        if (p === '/api/projects/file' && m === 'PUT') return json(res, 200, writeProjectFile(dir, body.file, body.text, { mtime: body.mtime }));
+        if (p === '/api/projects/inline-edit' && m === 'POST') {
+          const root = validateProject(dir);
+          const cfg = getConfig();
+          await connectorStatus(cfg);
+          const av = available(cfg);
+          const agent = MODES.includes(body.agent) && (av[body.agent] || av.cursorCode?.[body.agent]) && body.agent !== 'perplexity' ? body.agent : ['claude', 'chatgpt', 'gemini', 'grok', 'local'].find((k) => av[k] || av.cursorCode?.[k]);
+          if (!agent) throw new Error('Aucune IA n’est connectée.');
+          if (!String(body.instruction || '').trim()) throw new Error('Écris ce que l’IA doit faire.');
+          const ctrl = new AbortController();
+          res.on('close', () => { if (!res.writableEnded) ctrl.abort(); });
+          const code = await inlineEdit({ cfg, agent, dir: root, file: String(body.file || ''), before: String(body.before || ''), selection: String(body.selection || ''), after: String(body.after || ''), instruction: String(body.instruction), signal: ctrl.signal, baseUrl: BASE_URL });
+          return json(res, 200, { code, agent });
+        }
+      } catch (e) { return json(res, e.conflict ? 409 : 400, { error: e.message }); }
     }
     if (p === '/api/projects/info' && m === 'POST') {
       try { const { path: dir } = await readBody(req); return json(res, 200, { path: dir, name: path.basename(dir), type: detectType(dir) }); }

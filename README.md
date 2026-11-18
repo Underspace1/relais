@@ -12,7 +12,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 | Gemini | images (Nano Banana) et retouches, autre avis, code | clé OpenRouter ou clé API Google (AI Studio) | Gemini CLI (compte Google, Google AI Pro / Ultra) |
 | Perplexity | recherches sur le web, avec les sources | clé OpenRouter ou clé API Perplexity | — (pas d'outil officiel) |
 | IA locale | privé, gratuit, hors ligne | Ollama, LM Studio, llama.cpp, Jan (tout serveur compatible OpenAI) | — |
-| Cursor *(option)* | agent de code | `cursor-agent` | compte Cursor |
+| Cursor *(option)* | moteur de code : ChatGPT, Gemini, Grok (et Claude si tu veux) codent dans tes projets via ton abonnement, chacune avec son modèle | — | agent Cursor (`cursor-agent`) |
 
 > Relais est un projet personnel. Il n'est pas affilié à Anthropic, OpenAI, xAI, Google, Perplexity ni Cursor, et passe uniquement par leurs outils officiels ou leurs API (directement ou via OpenRouter).
 
@@ -44,6 +44,15 @@ Ici Gemini CLI travaille dans un projet Roblox (Rojo) : liste de tâches, modifi
 
 ![Session de code avec Gemini CLI : tâches et diff](docs/screenshots/projet.png)
 
+### Comme dans Cursor
+Avant chaque message dans un projet, Relais enregistre un point de restauration. Après la réponse, les fichiers modifiés s'affichent : garde-les, annule un fichier, refuse un seul bloc ou reviens à l'état d'avant. L'explorateur et l'éditeur de code sont dans le panneau de droite, avec `Ctrl K` pour faire réécrire une sélection par l'IA.
+
+| Garder ou annuler chaque modification | Éditeur, `Ctrl K` sur une sélection |
+|---|---|
+| ![Carte des fichiers modifiés avec diff par bloc](docs/screenshots/modifs.png) | ![Éditeur de code avec une modification proposée par Ctrl K](docs/screenshots/editeur-ctrl-k.png) |
+
+![Réglages, Cursor : quelles IA codent via Cursor et avec quel modèle](docs/screenshots/cursor.png)
+
 ### Outils, MCP, IA locale et skills
 
 | Le menu Outils | Serveurs MCP pour toutes les IA |
@@ -68,6 +77,13 @@ Ici Gemini CLI travaille dans un projet Roblox (Rojo) : liste de tâches, modifi
   - « compare l'avis de ChatGPT, Grok et Gemini » → table ronde, Claude tranche
   - `@ChatGPT`, `@Grok`, `@Gemini`, `@Perplexity`, `@Image`, `@design` → force l'IA ou le mode voulu
 - **Coder dans un projet** : choisis un dossier (par exemple un jeu Roblox synchronisé avec Rojo). Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement, chacun avec sa propre session. Claude peut aussi confier une sous-tâche à Gemini (`gemini_task`) ou une recherche de documentation à Perplexity.
+- **Cursor comme moteur de code** : avec ton abonnement Cursor, ChatGPT, Gemini et Grok (et Claude si tu le coches) codent dans tes projets via l'agent Cursor officiel, chacune avec son modèle (par défaut le plus récent de sa famille dans ton Cursor). Rien ne change pour toi : tu choisis l'IA comme avant, elle s'affiche « Gemini · Cursor ». **Claude reste le chef d'orchestre** : il découpe le travail et confie des sous-tâches aux IA qui passent par Cursor (`cursor_code`, en parallèle si possible), puis vérifie.
+- **Les fonctions de Cursor, pour toutes les IA** :
+  - **points de restauration** : avant chaque message, l'état du projet est enregistré dans un dépôt Git privé (`data/checkpoints/`), sans toucher au `.git` du projet (qui peut ne pas exister). Bouton *Restaurer* sous chacun de tes messages
+  - **garder ou annuler chaque modification** : après la réponse, la liste des fichiers modifiés avec leur diff ; *Garder*, *Annuler* un fichier, *Refuser ce bloc*, *Tout garder*, *Tout annuler*
+  - **explorateur et éditeur de code** (panneau de droite, onglet Fichiers) : coloration syntaxique, `Ctrl S` pour enregistrer, sans écraser en silence un fichier qu'une IA vient de modifier
+  - **`Ctrl K` sur une sélection** : écris la consigne, l'IA du projet propose le remplacement en diff, tu acceptes ou refuses
+  - **règles du projet partagées** : `.cursor/rules/*.mdc`, `.cursorrules`, `AGENTS.md`, `CLAUDE.md` et `GEMINI.md`. Chaque outil lit ses fichiers habituels ; Relais donne les autres aux IA qui ne les lisent pas. Modifiables dans l'app (`/memory`), avec création de règles Cursor (`alwaysApply`, `globs`, `description`)
 - **Les modes d'autorisation de Claude Code** : *Lecture seule*, *Mode plan* (l'IA propose un plan, tu l'approuves avant toute modification), *Demander* (chaque modification est montrée avec son diff), *Accepter les modifs* (fichiers sans confirmation, commandes soumises à ton accord) et *Accès complet*. `Maj+Tab` passe de l'un à l'autre, comme dans Claude Code.
 - **Les outils de Claude Code** :
   - commandes `/` : `/clear`, `/compact`, `/plan`, `/init`, `/review`, `/security-review`, `/memory`, `/model`, `/effort`, `/diff`, `/export`, `/fork`, `/resume`, `/mcp`, `/help`…
@@ -76,7 +92,7 @@ Ici Gemini CLI travaille dans un projet Roblox (Rojo) : liste de tâches, modifi
   - panneau de travail (`Ctrl J`) : liste de tâches de l'IA, fichiers modifiés avec leur diff, état Git et commit, statistiques de la session
   - réflexion de Claude visible, niveau de réflexion réglable (normal, approfondi, maximum), tokens, tours et coût sous chaque réponse
   - pièces jointes (bouton +, glisser-déposer, coller une capture), file d'attente des messages pendant une réponse, modifier et renvoyer un message, dupliquer une conversation, export Markdown
-  - mémoire du projet (`CLAUDE.md` / `AGENTS.md`) modifiable dans l'app
+  - règles du projet (`CLAUDE.md`, `AGENTS.md`, règles Cursor…) modifiables dans l'app
   - notifications et son de fin quand Relais est en arrière-plan
 - **Recherche web avec Perplexity** : Claude lui confie toute question d'actualité ou vérifiable, et cite les sources. Le bouton « recherche web » passe par Perplexity quand il est connecté. Tu peux aussi écrire directement à Perplexity (sélecteur sous le champ de message).
 - **Images avec Gemini (Nano Banana)** : moteur par défaut, avec repli automatique sur ChatGPT ou Grok. Gemini retouche aussi une image existante : joins-la (ou reprends la dernière générée) et décris la modification.
@@ -164,6 +180,16 @@ Réglages → **Connexions**, pour chaque IA, mode **Mon compte** :
 
 Chaque IA peut aussi être branchée par **clé API** (rien à installer non plus, agent intégré pour les projets). Les images Grok passent par une clé API xAI ou par OpenRouter.
 
+### Cursor (option) : toutes tes IA codent via ton abonnement Cursor
+
+Réglages → Connexions → **Cursor** :
+
+1. **Installer** : lance l'installeur officiel de l'agent Cursor (`cursor-agent`, installé dans ton profil par Cursor).
+2. **Se connecter** : ton navigateur s'ouvre sur ton compte Cursor.
+3. Coche **qui code via Cursor** (ChatGPT, Gemini et Grok par défaut ; Claude seulement si tu veux qu'il code lui aussi via Cursor) et, si tu veux, le modèle de chacune (vide = le plus récent de sa famille, lu avec `cursor-agent models`).
+
+Ensuite, dans un projet, choisis l'IA en bas à droite comme d'habitude. Les modes d'autorisation s'appliquent aussi : *Lecture seule* et *Mode plan* interdisent les modifications, *Accepter les modifs* et *Accès complet* laissent l'agent travailler.
+
 ### Gemini et Perplexity
 
 - **Gemini, mode Mon compte** : *Installer* Gemini CLI, puis *Se connecter* : une page Google s'ouvre dans ton navigateur, tu choisis ton compte et c'est fini. Gemini CLI demande **Node.js 20** ou plus récent. Il fait le texte et le code, pas les images : pour les images Gemini, ajoute en plus une clé API Google (champ sous la carte) ou une clé OpenRouter.
@@ -191,7 +217,10 @@ Les variables de `.env.example` :
 | `PERPLEXITY_MODEL` | modèle Perplexity (`sonar`, `sonar-pro`, `sonar-reasoning-pro`, `sonar-deep-research`) | `sonar-pro` |
 | `LOCAL_URL`, `LOCAL_MODEL`, `LOCAL_KEY` | IA locale : adresse du serveur compatible OpenAI (ex. `http://127.0.0.1:11434/v1` pour Ollama), modèle, clé facultative | vide = désactivée |
 | `BRIDGE_MODE` | quand tu ne nommes pas d'IA : `ask` (Relais te demande) ou `auto` (Claude choisit) | `ask` |
-| `CURSOR_ENABLED`, `CURSOR_WORKSPACE`, `CURSOR_COMMAND`, `CURSOR_ALLOW_WRITES` | agent Cursor | désactivé |
+| `CURSOR_CODERS` | IA qui codent via Cursor dans les projets (`chatgpt,gemini,grok,claude`) | `chatgpt,gemini,grok` |
+| `CURSOR_MODEL_CLAUDE`, `CURSOR_MODEL_CHATGPT`, `CURSOR_MODEL_GEMINI`, `CURSOR_MODEL_GROK` | modèle Cursor de chaque IA | vide = le plus récent |
+| `CURSOR_COMMAND` | chemin de `cursor-agent` s'il n'est pas trouvé tout seul | vide |
+| `CURSOR_ENABLED`, `CURSOR_WORKSPACE`, `CURSOR_ALLOW_WRITES` | ancien outil « Cursor » des discussions hors projet | désactivé |
 | `VOICE_ENGINE`, `VOICE_LANG`, `VOICE_OPENAI_MODEL` | dictée : moteur (`auto`, `windows`, `openai`), langue, modèle OpenAI | `auto`, `fr-FR`, `gpt-4o-mini-transcribe` |
 | `PORT` | port du serveur local | `4321` |
 
@@ -213,6 +242,10 @@ lib/voice.js          transcription de la voix (Windows ou OpenAI)
 lib/mcp-client.js     client MCP (stdio et HTTP) : outils des serveurs MCP pour toutes les IA
 lib/llm.js            appels directs : OpenRouter et clés API (flux, outils, images, sources Perplexity)
 lib/agent.js          agent de code intégré (sans Claude Code, Codex, Grok Build ni Gemini CLI)
+lib/cursor.js         agent Cursor : installation, modèles, sessions, flux des actions
+lib/checkpoints.js    points de restauration (dépôt Git privé), garder / annuler / refuser un bloc
+lib/rules.js          règles du projet partagées par toutes les IA
+public/vendor/        CodeMirror 5 (éditeur de code, livré avec Relais pour marcher hors ligne)
 public/               interface web (public/voice.js : micro et lecture à voix haute)
 skills/               skills Relais (Markdown)
 launcher/             lanceur Windows (C# + WebView2) et script de compilation
@@ -233,7 +266,7 @@ Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/
 - Le serveur écoute uniquement sur `127.0.0.1` : il n'est pas accessible depuis le réseau.
 - Tes connexions aux comptes sont dans `data/accounts/`. Supprimer ce dossier déconnecte tout. **Ne partage jamais ce dossier.**
 - Les dossiers trop larges (disque entier, dossier utilisateur, Bureau, Documents…) sont refusés comme dossier de projet.
-- En *Accès complet*, les agents modifient ton projet sans confirmation : garde une sauvegarde (Git).
+- En *Accès complet*, les agents modifient ton projet sans confirmation. Les points de restauration de Relais (`data/checkpoints/`, nécessitent Git) permettent de revenir en arrière ; les fichiers de plus de 5 Mo et les dossiers comme `node_modules` n'y sont pas enregistrés.
 - Le micro n'est autorisé que pour l'interface locale de Relais ; avec le moteur Windows, la voix ne quitte pas ton PC.
 - Les commandes `!` s'exécutent dans le dossier du projet avec tes droits : ce sont tes commandes, comme dans un terminal.
 
@@ -241,6 +274,7 @@ Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/
 
 - Polices : [Onest](https://fonts.google.com/specimen/Onest), [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) et [Newsreader](https://fonts.google.com/specimen/Newsreader) (licence SIL Open Font), servies par Google Fonts.
 - Skills proposés à l'installation : [Caveman](https://github.com/JuliusBrussee/caveman) (Apache-2.0), [Ponytail](https://github.com/DietrichGebert/ponytail) (MIT), [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT), téléchargés depuis GitHub à ta demande.
+- Éditeur de code : [CodeMirror 5](https://codemirror.net/5/) (licence MIT), dans `public/vendor/codemirror/`.
 - Fenêtre : [Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). Les bibliothèques redistribuables du SDK sont dans `launcher/lib/`.
 - Les skills importés gardent la licence de leur dépôt d'origine.
 - Logos de Claude, ChatGPT (OpenAI), Grok (xAI), Gemini (Google), Perplexity et Cursor : marques de leurs propriétaires respectifs, utilisées uniquement pour identifier chaque service. Tracés issus de [LobeHub Icons](https://github.com/lobehub/lobe-icons) (licence MIT), dans `public/logos.js`.
