@@ -191,6 +191,16 @@ class MainForm : Form
                     if (!a.Uri.StartsWith(Program.Url) && !a.Uri.StartsWith("about:")) { a.Cancel = true; OpenExternal(a.Uri); }
                 };
                 cw.DocumentTitleChanged += (o, a) => { Text = cw.DocumentTitle; };
+                // Saisie vocale, notifications et presse-papiers : autorisés pour l'interface locale uniquement.
+                cw.PermissionRequested += (o, a) =>
+                {
+                    if (!a.Uri.StartsWith(Program.Url)) return;
+                    var k = a.PermissionKind;
+                    if (k == Microsoft.Web.WebView2.Core.CoreWebView2PermissionKind.Microphone
+                        || k == Microsoft.Web.WebView2.Core.CoreWebView2PermissionKind.Notifications
+                        || k == Microsoft.Web.WebView2.Core.CoreWebView2PermissionKind.ClipboardRead)
+                        a.State = Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow;
+                };
                 web.Source = new Uri(Program.Url);
             }
             catch (Exception ex)

@@ -14,6 +14,7 @@
       const p = JSON.parse(localStorage.getItem('relais-prefs') || '{}');
       if (p.theme && p.theme !== 'auto') document.documentElement.dataset.theme = p.theme;
       if (p.fontSize) document.documentElement.dataset.size = p.fontSize;
+      if (p.width) document.documentElement.dataset.width = p.width;
     } catch {}
   </script>
 </head>
@@ -55,7 +56,17 @@
           <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9h17M9 9v10.5"/></svg>
           <span>Designs</span>
         </button>
+        <button class="nav-item" id="openPalette" type="button">
+          <svg viewBox="0 0 24 24"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+          <span>Commandes</span><kbd>Ctrl ⇧ P</kbd>
+        </button>
       </nav>
+
+      <div class="conv-filter seg" id="convFilter" role="tablist" aria-label="Filtrer les conversations">
+        <button type="button" data-conv-filter="all" class="on">Toutes</button>
+        <button type="button" data-conv-filter="project">Ce projet</button>
+        <button type="button" data-conv-filter="chat">Discussions</button>
+      </div>
 
       <div class="conv-list" id="convList" aria-label="Conversations"></div>
 
@@ -73,9 +84,19 @@
         <button class="icon-btn only-mobile" id="menuBtn" type="button" aria-label="Menu">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
+        <button class="icon-btn only-desktop" id="sideToggle" type="button" aria-label="Masquer la barre latérale" title="Barre latérale (Ctrl B)">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg>
+        </button>
         <button class="project-btn" id="projectBtn" type="button" title="Choisir le projet sur lequel les IA travaillent"></button>
+        <button class="branch-btn" id="branchBtn" type="button" title="Git : état du projet" hidden></button>
         <h1 class="conv-title" id="convTitle">Nouvelle conversation</h1>
         <div class="top-agents" id="topAgents"></div>
+        <button class="icon-btn" id="convMenuBtn" type="button" aria-label="Actions de la conversation" title="Actions de la conversation">
+          <svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg>
+        </button>
+        <button class="icon-btn" id="panelToggle" type="button" aria-label="Panneau de travail" title="Panneau : tâches, modifications, Git (Ctrl J)">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M14.5 4.5v15"/></svg>
+        </button>
       </header>
 
       <section class="thread" id="thread">
@@ -84,19 +105,37 @@
 
       <footer class="composer-wrap">
         <div class="popover" id="popover" hidden></div>
+        <div class="queue" id="queue" hidden></div>
         <form class="composer" id="composer" autocomplete="off">
+          <div class="drop-hint" aria-hidden="true">Dépose tes fichiers ici</div>
+          <div class="attach-list" id="attachList" hidden></div>
           <div class="chips" id="chips" hidden></div>
+          <div class="voice-live" id="voiceLive" hidden>
+            <span class="vu" id="vu"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="voice-text" id="voiceText">Je t’écoute…</span>
+            <span class="voice-time" id="voiceTime">0:00</span>
+            <button type="button" class="btn sm" id="voiceCancel">Annuler</button>
+            <button type="button" class="btn sm primary" id="voiceStop">Terminer</button>
+          </div>
           <textarea id="input" rows="1" placeholder="Écris à Claude…" aria-label="Message"></textarea>
           <div class="toolbar">
+            <button type="button" class="tool-btn icon-only" id="attachBtn" title="Joindre des fichiers ou des images (glisser-déposer, Ctrl V)" aria-label="Joindre">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <input type="file" id="fileInput" multiple hidden>
             <button type="button" class="tool-btn" id="relayBtn" title="Relais : faire travailler une autre IA">
               <svg viewBox="0 0 24 24"><path d="M5 12h4l2-5 2 10 2-5h4"/></svg><span>Relais</span>
             </button>
-            <button type="button" class="tool-btn" id="skillBtn" title="Skills (/)">
+            <button type="button" class="tool-btn" id="skillBtn" title="Commandes et skills (/)">
               <svg viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z"/></svg><span>Skill</span>
             </button>
             <button type="button" class="tool-btn perm-btn" id="permBtn" hidden></button>
+            <button type="button" class="tool-btn effort-btn" id="effortBtn" hidden></button>
             <span class="spacer"></span>
             <button type="button" class="tool-btn model-btn" id="modelBtn" title="Choisir le modèle"></button>
+            <button type="button" class="tool-btn icon-only mic-btn" id="micBtn" title="Dicter (Ctrl M) · clic long : conversation vocale" aria-label="Dicter">
+              <svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg>
+            </button>
             <div class="segmented" id="modeSwitch" role="radiogroup" aria-label="Destinataire">
               <button type="button" role="radio" data-mode="claude" aria-checked="true"><i class="dot" data-agent="claude"></i><span>Claude</span></button>
               <button type="button" role="radio" data-mode="chatgpt" aria-checked="false"><i class="dot" data-agent="chatgpt"></i><span>ChatGPT</span></button>
@@ -110,10 +149,36 @@
         </form>
         <div class="usage-row">
           <button type="button" class="usage-bar" id="usageBar" title="Utilisation de tes abonnements"></button>
+          <div class="statusline" id="statusline"></div>
           <p class="composer-hint" id="hint"></p>
         </div>
       </footer>
     </main>
+
+    <aside class="inspector" id="inspector" aria-label="Panneau de travail" hidden>
+      <div class="insp-head">
+        <div class="insp-tabs seg" id="inspTabs" role="tablist">
+          <button type="button" data-insp="tasks" class="on">Tâches</button>
+          <button type="button" data-insp="changes">Modifs</button>
+          <button type="button" data-insp="git">Git</button>
+          <button type="button" data-insp="session">Session</button>
+        </div>
+        <button class="icon-btn sm" id="inspClose" type="button" aria-label="Fermer le panneau"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="insp-body" id="inspBody"></div>
+    </aside>
+  </div>
+
+  <!-- Palette de commandes -->
+  <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Palette de commandes" hidden>
+    <div class="palette-card">
+      <label class="palette-input">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+        <input id="paletteInput" type="text" placeholder="Commande, conversation, skill…" autocomplete="off" spellcheck="false">
+        <kbd>Échap</kbd>
+      </label>
+      <div class="palette-list" id="paletteList"></div>
+    </div>
   </div>
 
   <div class="scrim" id="scrim" hidden></div>

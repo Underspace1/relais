@@ -1,5 +1,6 @@
-/* Relais v2 — client */
+/* Relais v3 — client */
 import { detectIntent } from './intent.js';
+import { VoiceInput, voiceSupport, speak, stopSpeaking, listVoices } from './voice.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -13,6 +14,7 @@ const AGENTS = {
   grok: { name: 'Grok', mono: 'Gk' },
   cursor: { name: 'Cursor', mono: 'Cu' },
   skill: { name: 'Skill', mono: 'Sk' },
+  shell: { name: 'Terminal', mono: '>_' },
 };
 
 const I = {
@@ -44,14 +46,40 @@ const I = {
   monitor: '<svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/></svg>',
   tablet: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/></svg>',
   phone: '<svg viewBox="0 0 24 24"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M11 18h2"/></svg>',
+  mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg>',
+  speaker: '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  stop: '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
+  branch: '<svg viewBox="0 0 24 24"><circle cx="6.5" cy="5.5" r="2"/><circle cx="6.5" cy="18.5" r="2"/><circle cx="17.5" cy="7.5" r="2"/><path d="M6.5 7.5v9M17.5 9.5c0 4-5 3-9.5 7"/></svg>',
+  fork: '<svg viewBox="0 0 24 24"><circle cx="6" cy="5.5" r="2"/><circle cx="18" cy="5.5" r="2"/><circle cx="12" cy="18.5" r="2"/><path d="M6 7.5v1.5a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7.5M12 12v4.5"/></svg>',
+  terminal: '<svg viewBox="0 0 24 24"><path d="M4 17l6-5-6-5M12 19h8"/></svg>',
+  file: '<svg viewBox="0 0 24 24"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>',
+  brain: '<svg viewBox="0 0 24 24"><path d="M9 4.5a3 3 0 0 0-3 3 3 3 0 0 0-1.5 5.5A3 3 0 0 0 7 18a2.5 2.5 0 0 0 5 .5V6a2 2 0 0 0-3-1.5zM15 4.5a3 3 0 0 1 3 3 3 3 0 0 1 1.5 5.5A3 3 0 0 1 17 18a2.5 2.5 0 0 1-5 .5"/></svg>',
+  plan: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>',
+  keyboard: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
+  memory: '<svg viewBox="0 0 24 24"><path d="M6 3.5h9l3 3v14H6z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
+  server: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="16" height="6.5" rx="1.5"/><path d="M7.5 7.2h.01M7.5 16.8h.01"/></svg>',
+  dots: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg>',
 };
 
-const DEFAULT_PREFS = { theme: 'auto', fontSize: 'm', sendKey: 'enter', stepsOpen: false, perm: 'ask' };
+const DEFAULT_PREFS = {
+  theme: 'auto', fontSize: 'm', sendKey: 'enter', stepsOpen: false, perm: 'ask', effort: 'normal',
+  panel: false, sidebar: true, showThinking: true, notify: true, sound: false, width: 'normal',
+  voiceEngine: 'auto', voiceLang: 'fr-FR', voiceAutoSend: false, voiceRead: false, voiceName: '', voiceRate: 1,
+};
 
 const PERM_INFO = {
   read: { label: 'Lecture seule', icon: '<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.5"/></svg>', desc: 'Les IA lisent et analysent, sans rien modifier.' },
+  plan: { label: 'Mode plan', icon: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>', desc: 'L’IA explore le projet et te propose un plan détaillé. Rien n’est modifié avant ton accord.' },
   ask: { label: 'Demander', icon: '<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/></svg>', desc: 'Claude te demande avant chaque modification ou commande. Codex et Grok modifient les fichiers du projet, sans commandes risquées.' },
+  auto: { label: 'Accepter les modifs', icon: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 20h6"/></svg>', desc: 'Les fichiers sont modifiés sans demander ; les commandes restent soumises à ton accord.' },
   full: { label: 'Accès complet', icon: '<svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></svg>', desc: 'Fichiers et commandes sans confirmation. Pour les projets que tu sauvegardes (Git).' },
+};
+// Maj+Tab fait défiler ces modes, comme dans Claude Code
+const PERM_CYCLE = ['ask', 'auto', 'plan'];
+const EFFORT_INFO = {
+  normal: { label: 'Normal', desc: 'Réflexion standard, la plus rapide.' },
+  high: { label: 'Approfondi', desc: 'Claude réfléchit davantage avant d’agir (« think hard »).' },
+  max: { label: 'Maximum', desc: 'Réflexion maximale (« ultrathink ») : pour les problèmes difficiles. Consomme plus.' },
 };
 const CODER_NAME = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build' };
 
@@ -72,8 +100,16 @@ const state = {
   prefs: loadPrefs(),
   project: null, // { path, name, type } du projet ouvert
   perm: null,
+  attachments: [], // pièces jointes en attente d'envoi
+  queue: [], // messages tapés pendant une réponse
+  msgCount: 0, // nombre de messages enregistrés dans la conversation ouverte
+  convMessages: [], // messages de la conversation ouverte (panneau, export)
+  convFilter: 'all',
+  git: null,
+  stats: null,
+  inspTab: 'tasks',
 };
-state.perm = state.prefs.perm || 'ask';
+state.perm = PERM_INFO[state.prefs.perm] ? state.prefs.perm : 'ask';
 
 function loadPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('relais-prefs') || '{}') }; } catch { return { ...DEFAULT_PREFS }; }
@@ -83,6 +119,8 @@ function savePrefs() {
   const root = document.documentElement;
   if (state.prefs.theme === 'auto') delete root.dataset.theme; else root.dataset.theme = state.prefs.theme;
   if (state.prefs.fontSize === 'm') delete root.dataset.size; else root.dataset.size = state.prefs.fontSize;
+  root.dataset.width = state.prefs.width;
+  $('#app').classList.toggle('side-hidden', !state.prefs.sidebar);
   setMode(state.mode);
   if (typeof syncHostBackground === 'function') syncHostBackground();
 }
@@ -237,15 +275,18 @@ function groupLabel(ts) {
 function renderConvList() {
   const el = $('#convList');
   const q = state.search.trim().toLowerCase();
-  const list = state.convs.filter((c) => !q || (c.title || '').toLowerCase().includes(q));
+  const base = q && state.searchHits ? state.searchHits : state.convs.filter((c) => !q || (c.title || '').toLowerCase().includes(q));
+  const f = state.convFilter;
+  const list = base.filter((c) => f === 'all' || (f === 'chat' ? !c.project : state.project ? c.project === state.project.path : !!c.project));
+  $$('#convFilter [data-conv-filter]').forEach((b) => b.classList.toggle('on', b.dataset.convFilter === f));
   if (!list.length) {
-    el.innerHTML = `<div class="conv-empty">${q ? 'Aucun résultat.' : 'Tes conversations apparaîtront ici.'}</div>`;
+    el.innerHTML = `<div class="conv-empty">${q ? 'Aucun résultat.' : f === 'project' ? (state.project ? `Aucune session dans ${esc(state.project.name)}.` : 'Ouvre un projet pour voir ses sessions.') : 'Tes conversations apparaîtront ici.'}</div>`;
     return;
   }
   const pinned = list.filter((c) => c.pinned);
   const rest = list.filter((c) => !c.pinned);
   const item = (c) => `<div class="conv-item ${c.id === state.convId ? 'active' : ''}" role="button" tabindex="0" data-conv="${c.id}" title="${c.project ? esc(c.project) : ''}">
-      ${c.project ? `<span class="conv-proj">${FOLDER_ICON}</span>` : `<i class="dot" data-agent="${esc(c.mode || 'claude')}"></i>`}<span class="t">${esc(c.title || 'Sans titre')}</span>
+      ${c.project ? `<span class="conv-proj">${FOLDER_ICON}</span>` : `<i class="dot" data-agent="${esc(c.mode || 'claude')}"></i>`}<span class="t">${esc(c.title || 'Sans titre')}${c.snippet ? `<small>${esc(c.snippet)}</small>` : ''}</span>
       <span class="acts"><button type="button" data-pin="${c.id}" data-pinned="${c.pinned ? 1 : 0}" title="${c.pinned ? 'Désépingler' : 'Épingler'}">${I.pin}</button><button type="button" data-rename="${c.id}" title="Renommer">${I.edit}</button><button type="button" data-del="${c.id}" title="Supprimer">${I.trash}</button></span></div>`;
   let html = pinned.length ? `<div class="conv-group">Épinglées</div>${pinned.map(item).join('')}` : '';
   let last = '';
@@ -321,23 +362,69 @@ function renderEmpty() {
 
 function fmtMs(ms) { return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace('.', ',')} s`; }
 
-function userEl(m) {
+function userEl(m, index) {
   const sk = m.skill && state.skills.find((s) => s.slug === m.skill);
   const rl = m.relay && relays().find((r) => r.id === m.relay);
   const tags = [
     rl ? `<span class="tag">${chainHtml(rl.chain)}${esc(rl.label)}${m.direct ? ' · direct' : ''}</span>` : '',
     sk ? `<span class="tag"><i class="dot" data-agent="skill"></i>${esc(sk.name)}</span>` : '',
   ].join('');
-  return h(`<div class="msg user">${tags.trim() ? `<div class="tags">${tags}</div>` : ''}<div class="bubble">${esc(m.text)}</div></div>`);
+  if (m.command === 'compact' && m.text) return h(`<div class="msg user" data-index="${index ?? ''}"><div class="bubble"><code>/compact</code></div></div>`);
+  if (m.command === 'compact') {
+    return h(`<div class="msg system-note" data-index="${index ?? ''}"><span class="sys-line">${I.memory}Conversation résumée (/compact) : la suite repart de ce résumé, avec un contexte allégé.</span></div>`);
+  }
+  const atts = (m.attachments || []).map((a) => a.kind === 'image'
+    ? `<button type="button" class="att-thumb" data-zoom="${esc(a.url)}" data-caption="${esc(a.name)}"><img src="${esc(a.url)}" alt="${esc(a.name)}" loading="lazy"></button>`
+    : `<span class="att-file">${I.file}<span>${esc(a.name)}</span><i>${fmtSize(a.size)}</i></span>`).join('');
+  const isShell = m.command === 'shell';
+  return h(`<div class="msg user ${isShell ? 'shell' : ''}" data-index="${index ?? ''}">${tags.trim() ? `<div class="tags">${tags}</div>` : ''}
+    ${atts ? `<div class="att-row">${atts}</div>` : ''}
+    <div class="bubble">${isShell ? `<code>${esc(m.text)}</code>` : esc(m.text)}</div>
+    <div class="msg-actions user-actions">
+      <button type="button" data-copy-user title="Copier">${I.copy}<span>Copier</span></button>
+      ${isShell ? '' : `<button type="button" data-edit-msg title="Modifier et renvoyer">${I.edit}<span>Modifier</span></button>`}
+    </div></div>`);
+}
+
+function fmtSize(n) { return n >= 1048576 ? `${(n / 1048576).toFixed(1).replace('.', ',')} Mo` : n >= 1024 ? `${Math.round(n / 1024)} Ko` : `${n || 0} o`; }
+
+function thinkingEl(step, wasOpen) {
+  const open = wasOpen ?? false;
+  return h(`<div class="step thinking-step part-step ${open ? 'open' : ''} ${state.prefs.showThinking ? '' : 'is-hidden'}" data-id="${esc(step.id)}" data-status="done">
+    <button type="button" class="step-head" aria-expanded="${open}">${I.brain}<span class="step-title">Réflexion</span>
+      <span class="step-preview">${esc(String(step.output || '').replace(/\s+/g, ' ').slice(0, 140))}</span>${I.chev}</button>
+    <div class="step-body"><div class="md thinking-md">${md(step.output)}</div></div></div>`);
+}
+
+function todosEl(part) {
+  const items = part.items || [];
+  const done = items.filter((t) => t.status === 'completed').length;
+  return h(`<div class="todos part-todos" data-agent="${esc(part.agent || 'claude')}">
+    <div class="todos-head">${I.plan}<b>Tâches</b><span class="todos-count">${done}/${items.length}</span>
+      <span class="u-meter wide"><i style="width:${items.length ? Math.round((done / items.length) * 100) : 0}%"></i></span></div>
+    <ul>${items.map((t) => `<li data-status="${esc(t.status)}"><span class="box">${t.status === 'completed' ? I.check : ''}</span><span>${esc(t.status === 'in_progress' && t.active ? t.active : t.text)}</span></li>`).join('')}</ul>
+  </div>`);
+}
+
+function planEl(part, { settled = false } = {}) {
+  return h(`<div class="plan-card part-plan" data-plan-id="${esc(part.id)}">
+    <div class="plan-head">${I.plan}<b>Plan proposé</b><span class="tag">mode plan</span></div>
+    <div class="md">${md(part.text || '_(plan vide)_')}</div>
+    ${settled ? '' : `<div class="perm-actions plan-actions">
+      <button type="button" class="btn sm primary" data-plan-approve="auto">Approuver · accepter les modifs</button>
+      <button type="button" class="btn sm" data-plan-approve="ask">Approuver · demander pour chaque modif</button>
+      <button type="button" class="btn sm right" data-plan-revise>Modifier le plan…</button>
+    </div>`}</div>`);
 }
 
 function stepEl(step, wasOpen) {
+  if (step.kind === 'thinking') return thinkingEl(step, wasOpen);
   const a = AGENTS[step.agent] ? step.agent : 'claude';
   const flat = (s) => String(s || '').replace(/\s+/g, ' ');
   const preview = step.status === 'running' ? (flat(step.output).slice(-120) || flat(step.input).slice(0, 120)) : flat(step.input).slice(0, 140);
   const status = step.status === 'running' ? '<span class="spinner"></span>en cours' : step.status === 'error' ? 'erreur' : step.ms ? fmtMs(step.ms) : 'terminé';
   const isText = ['chatgpt', 'grok', 'skill'].includes(step.agent) && !step.kind;
-  const open = wasOpen ?? (state.prefs.stepsOpen || step.status === 'error');
+  const open = wasOpen ?? (state.prefs.stepsOpen || step.status === 'error' || step.agent === 'shell');
   const body = `
     ${step.diff ? diffHtml(step.diff) : ''}
     ${step.input && !step.diff ? `<div class="step-label">${step.agent === 'skill' ? 'Description' : step.kind === 'command' ? 'Commande' : step.kind ? 'Détail' : 'Consigne'}</div><div class="step-input">${esc(step.input)}</div>` : ''}
@@ -367,18 +454,36 @@ function partEl(part, wasOpen) {
   if (part.type === 'step') return stepEl(part, wasOpen);
   if (part.type === 'image') return imageEl(part);
   if (part.type === 'design') return designEl(part);
+  if (part.type === 'todos') return todosEl(part);
+  if (part.type === 'plan') return planEl(part, { settled: wasOpen === 'settled' });
   return h('<div></div>');
 }
 
-function assistantShell(agent, skillSlug) {
+function assistantShell(agent, skillSlug, index) {
   const a = AGENTS[agent] ? agent : 'claude';
   const sk = skillSlug && state.skills.find((s) => s.slug === skillSlug);
-  const el = h(`<div class="msg assistant">
+  const el = h(`<div class="msg assistant" data-index="${index ?? ''}">
     <div class="msg-head"><span class="avatar" data-agent="${a}">${AGENTS[a].mono}</span><span class="msg-name">${state.project && CODER_NAME[a] ? CODER_NAME[a] : AGENTS[a].name}</span>
       ${sk ? `<span class="tag"><i class="dot" data-agent="skill"></i>${esc(sk.name)}</span>` : ''}<span class="msg-meta"></span></div>
     <div class="parts"></div>
-    <div class="msg-actions"><button type="button" data-copy-msg>${I.copy}<span>Copier</span></button><button type="button" data-retry>${I.retry}<span>Relancer</span></button></div></div>`);
+    <div class="msg-actions">
+      <button type="button" data-copy-msg>${I.copy}<span>Copier</span></button>
+      <button type="button" data-retry>${I.retry}<span>Relancer</span></button>
+      ${voiceSupport.tts ? `<button type="button" data-speak-msg>${I.speaker}<span>Lire</span></button>` : ''}
+      <button type="button" data-fork-msg title="Nouvelle conversation à partir d’ici">${I.fork}<span>Dupliquer d’ici</span></button>
+    </div></div>`);
   return { el, partsEl: $('.parts', el), parts: [], els: [], agent: a };
+}
+
+function fmtStats(st, ms) {
+  if (!st && !ms) return '';
+  const bits = [];
+  if (ms) bits.push(fmtMs(ms));
+  if (st?.turns) bits.push(`${st.turns} tour${st.turns > 1 ? 's' : ''}`);
+  const tok = (st?.tokensIn || 0) + (st?.tokensOut || 0);
+  if (tok) bits.push(`${fmtTok(tok)} tokens`);
+  if (st?.cost) bits.push(`${st.cost < 0.01 ? '<0,01' : st.cost.toFixed(2).replace('.', ',')} $`);
+  return bits.join(' · ');
 }
 
 function errorEl(message) {
@@ -429,19 +534,29 @@ function notifyAttention(msg) {
   window.addEventListener('focus', () => { document.title = t; }, { once: true });
 }
 
-function finishView(view, { ms, error } = {}) {
+function finishView(view, { ms, error, stats } = {}) {
   view.el.classList.remove('streaming');
   $('.thinking', view.el)?.remove();
-  if (ms) $('.msg-meta', view.el).textContent = fmtMs(ms);
+  if (ms || stats) {
+    const meta = $('.msg-meta', view.el);
+    meta.textContent = fmtStats(stats, ms);
+    if (stats?.model) meta.title = `Modèle : ${stats.model}`;
+  }
   if (error) view.partsEl.append(errorEl(error));
   if (!view.parts.length && !error) view.partsEl.append(h('<div class="md part-text"><p>(Réponse vide)</p></div>'));
   view.el._view = view;
 }
 
-function assistantEl(m) {
-  const view = assistantShell(m.agent, m.skill);
-  for (const p of m.parts || []) { view.parts.push(p); const e = partEl(p, state.prefs.stepsOpen); view.els.push(e); view.partsEl.append(e); }
-  finishView(view, { ms: m.ms, error: m.error });
+function assistantEl(m, index, { last = false } = {}) {
+  const view = assistantShell(m.agent, m.skill, index);
+  for (const p of m.parts || []) {
+    view.parts.push(p);
+    // Un plan déjà suivi d'une autre réponse n'a plus besoin de ses boutons.
+    const e = partEl(p, p.type === 'plan' ? (last ? undefined : 'settled') : p.type === 'step' && p.agent === 'shell' ? undefined : state.prefs.stepsOpen);
+    view.els.push(e);
+    view.partsEl.append(e);
+  }
+  finishView(view, { ms: m.ms, error: m.error, stats: m.stats });
   return view.el;
 }
 
@@ -477,6 +592,22 @@ function applyEvent(view, ev, d) {
     view.els[i].replaceWith(e);
     view.els[i] = e;
     scrollDown();
+  } else if (ev === 'todos') {
+    const part = { type: 'todos', ...d.todos };
+    const i = view.parts.findIndex((p) => p.type === 'todos');
+    if (i >= 0) {
+      view.parts[i] = part;
+      const e = todosEl(part);
+      view.els[i].replaceWith(e);
+      view.els[i] = e;
+    } else addPart(view, part);
+    state.todos = part.items;
+    if (state.inspTab === 'tasks') renderInspector();
+    scrollDown();
+  } else if (ev === 'plan') {
+    addPart(view, { type: 'plan', ...d.plan });
+    scrollDown(true);
+    notifyAttention('Plan prêt à approuver');
   } else if (ev === 'image') addPart(view, { type: 'image', ...d.image });
   else if (ev === 'design') {
     const part = { type: 'design', ...d.design };
@@ -498,40 +629,72 @@ function applyEvent(view, ev, d) {
    ========================================================================== */
 let lastSent = null;
 
+/**
+ * Envoie un message. `override` permet de relancer ou d'envoyer une commande (/compact, !cmd)
+ * sans toucher au champ de saisie.
+ */
 async function send(text, override) {
   text = String(text || '').trim();
-  if (!text || state.streaming) return;
-  const req = override || { mode: state.mode, skill: state.skill, relay: state.relay, direct: state.relayDirect };
+  if (!text) return;
+  // Pendant une réponse, le message attend son tour (comme dans Claude Code).
+  if (state.streaming) {
+    if (override) return;
+    state.queue.push({ text, attachments: state.attachments.slice(), skill: state.skill, relay: state.relay, direct: state.relayDirect });
+    input.value = '';
+    state.attachments = [];
+    renderAttachments();
+    autoGrow();
+    renderQueue();
+    return;
+  }
+  // Commandes : « / » (Relais) et « ! » (terminal du projet)
+  if (!override && text.startsWith('/') && runSlash(text)) { input.value = ''; autoGrow(); return; }
+  const isShell = !override && text.startsWith('!') && text.length > 1;
+  if (isShell && !state.project) { toast('Les commandes « ! » se lancent dans un projet : ouvre d’abord un dossier.', true); return; }
+
+  const req = override || { mode: state.mode, skill: state.skill, relay: state.relay, direct: state.relayDirect, attachments: state.attachments.slice(), command: isShell ? 'shell' : undefined };
   const r = req.relay && relays().find((x) => x.id === req.relay);
   const a = av();
-  if (state.status && !a.claude && !a.chatgpt && !a.grok) {
+  const needsAi = req.command !== 'shell';
+  if (needsAi && state.status && !a.claude && !a.chatgpt && !a.grok) {
     toast('Connecte d’abord au moins une IA.', true);
     openSettings('connexions');
     return;
   }
-  if (state.status && state.project && !a[req.mode]) {
+  if (needsAi && state.status && state.project && !a[req.mode]) {
     toast(`${CODER_NAME[req.mode]} n’est pas encore connecté.`, true);
     openSettings('connexions');
     return;
   }
-  if (state.status && !state.project && !r && req.mode !== 'claude' && !a[req.mode]) {
+  if (needsAi && state.status && !state.project && !r && req.mode !== 'claude' && !a[req.mode]) {
     toast(`${AGENTS[req.mode].name} n’est pas encore connecté.`, true);
     openSettings('connexions');
     return;
   }
+  stopSpeaking();
   lastSent = { text, ...req };
 
   if ($('.empty', inner)) inner.innerHTML = '';
-  inner.append(userEl({ text, skill: req.skill, relay: req.relay, direct: req.direct }));
-  const agent = r && req.direct ? r.engine : r ? 'claude' : req.mode;
-  const view = assistantShell(agent, req.skill);
+  const userIndex = state.msgCount;
+  const userMsg = { text, skill: req.skill, relay: req.relay, direct: req.direct, attachments: req.attachments, command: req.command };
+  inner.append(userEl(userMsg, userIndex));
+  const agent = req.command === 'shell' ? 'shell' : r && req.direct ? r.engine : r ? 'claude' : req.mode;
+  const view = assistantShell(agent, req.skill, userIndex + 1);
   view.el.classList.add('streaming');
-  const label = r ? (req.direct ? `${AGENTS[r.engine].name} travaille…` : 'Claude prépare le relais…') : `${AGENTS[agent].name} réfléchit…`;
+  const label = req.command === 'shell' ? 'Exécution…' : req.command === 'compact' ? 'Résumé de la conversation…' : r ? (req.direct ? `${AGENTS[r.engine].name} travaille…` : 'Claude prépare le relais…') : `${AGENTS[agent].name} réfléchit…`;
   view.partsEl.append(h(`<div class="thinking"><span class="bars"><i></i><i></i><i></i></span>${label}</div>`));
   inner.append(view.el);
   scrollDown(true);
 
-  if (!override) { input.value = ''; autoGrow(); state.intent = null; setSkill(null); setRelay(null); }
+  if (!override) {
+    input.value = '';
+    autoGrow();
+    state.intent = null;
+    state.attachments = [];
+    renderAttachments();
+    setSkill(null);
+    setRelay(null);
+  }
 
   const controller = new AbortController();
   state.streaming = { controller, view };
@@ -542,7 +705,11 @@ async function send(text, override) {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ conversationId: state.convId, text, mode: req.mode, skill: req.skill, relay: req.relay, direct: req.direct, project: state.project?.path || null, perm: state.perm }),
+      body: JSON.stringify({
+        conversationId: state.convId, text, mode: req.mode, skill: req.skill, relay: req.relay, direct: req.direct,
+        project: state.project?.path || null, perm: state.perm, effort: state.prefs.effort,
+        attachments: (req.attachments || []).map((x) => x.id), command: req.command,
+      }),
       signal: controller.signal,
     });
     if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || res.statusText); }
@@ -569,16 +736,17 @@ async function send(text, override) {
           const isNew = state.convId !== d.id;
           state.convId = d.id;
           $('#convTitle').textContent = d.title;
-          if (isNew) loadConvs();
+          if (isNew) { state.convMessages = []; loadConvs(); }
         } else if (ev === 'route') {
           const ag = AGENTS[d.agent] ? d.agent : 'claude';
           const av2 = $('.msg-head .avatar', view.el);
           av2.dataset.agent = ag;
           av2.textContent = AGENTS[ag].mono;
-          $('.msg-name', view.el).textContent = d.project ? CODER_NAME[ag] : AGENTS[ag].name;
+          view.agent = ag;
+          $('.msg-name', view.el).textContent = d.project && CODER_NAME[ag] ? CODER_NAME[ag] : AGENTS[ag].name;
           if (d.relay) $('.msg-name', view.el).insertAdjacentHTML('afterend', `<span class="tag">${esc(d.relay)}${d.direct ? ' · direct' : ''}</span>`);
           const th = $('.thinking', view.el);
-          if (th) th.lastChild.textContent = d.direct ? `${AGENTS[ag].name} travaille…` : `${AGENTS[ag].name} réfléchit…`;
+          if (th && ag !== 'shell') th.lastChild.textContent = d.direct ? `${AGENTS[ag].name} travaille…` : `${AGENTS[ag].name} réfléchit…`;
           if (d.fallback) view.partsEl.insertAdjacentHTML('afterbegin', '<p class="note">Claude n’est pas connecté : la demande part directement à l’IA disponible.</p>');
         } else if (ev === 'permission') {
           $('.thinking', view.el)?.remove();
@@ -588,10 +756,18 @@ async function send(text, override) {
         } else if (ev === 'permission_done') {
           const card = $(`[data-perm-id="${d.id}"]`);
           if (card) settlePermission(card, d.decision);
+        } else if (ev === 'meta') {
+          meta.stats = d.meta;
+          $('.msg-meta', view.el).textContent = fmtStats(d.meta);
+        } else if (ev === 'compacted') {
+          meta.compacted = true;
         } else if (ev === 'error') meta.error = d.message;
         else if (ev === 'done') meta.ms = d.ms;
         else if (ev === 'skills') loadSkills();
-        else applyEvent(view, ev, d);
+        else {
+          applyEvent(view, ev, d);
+          if (ev === 'step' && state.panelOpen && ['changes', 'session'].includes(state.inspTab)) renderInspectorSoon();
+        }
       }
     }
   } catch (e) {
@@ -601,11 +777,55 @@ async function send(text, override) {
     view.parts.forEach((p, i) => { if (p.type === 'text') view.els[i].innerHTML = md(p.text); });
     finishView(view, meta);
     state.streaming = null;
+    state.msgCount = userIndex + 2;
+    state.convMessages.push({ role: 'user', ...userMsg }, { role: 'assistant', agent: view.agent, parts: view.parts, error: meta.error, ms: meta.ms, stats: meta.stats });
+    if (meta.stats) state.stats = meta.stats;
+    // En mode plan sans carte « plan » (Codex, Grok), on propose quand même d'exécuter.
+    if (state.project && state.perm === 'plan' && !meta.error && req.command !== 'shell' && !view.parts.some((p) => p.type === 'plan')) {
+      view.partsEl.append(h(`<div class="plan-card compact"><div class="plan-head">${I.plan}<b>Mode plan</b><span class="note">Le plan te convient ?</span></div>
+        <div class="perm-actions plan-actions"><button type="button" class="btn sm primary" data-plan-approve="auto">Approuver · accepter les modifs</button>
+        <button type="button" class="btn sm" data-plan-approve="ask">Approuver · demander pour chaque modif</button></div></div>`));
+    }
+    if (meta.compacted) inner.append(userEl({ command: 'compact' }));
     updateSendBtn();
     loadConvs();
     loadUsage();
-    input.focus();
+    if (state.project) refreshGit();
+    if (state.panelOpen) renderInspector();
+    onReplyDone(view, meta);
+    if (state.queue.length && meta.error !== 'Arrêté.') {
+      const next = state.queue.shift();
+      renderQueue();
+      state.attachments = next.attachments;
+      state.skill = next.skill;
+      state.relay = next.relay;
+      state.relayDirect = next.direct;
+      renderAttachments();
+      setTimeout(() => send(next.text), 150);
+    } else input.focus();
   }
+}
+
+function renderQueue() {
+  const q = $('#queue');
+  q.hidden = !state.queue.length;
+  q.innerHTML = state.queue.map((m, i) => `<div class="queue-item"><span class="queue-tag">En attente</span><span class="t">${esc(m.text)}</span>
+    <button type="button" class="icon-btn sm" data-queue-edit="${i}" title="Remettre dans le champ">${I.edit}</button>
+    <button type="button" class="icon-btn sm" data-queue-del="${i}" title="Retirer">${I.x}</button></div>`).join('');
+}
+
+/** Fin d'une réponse : notification, son, lecture vocale, conversation vocale. */
+function onReplyDone(view, meta) {
+  const text = view.parts.filter((p) => p.type === 'text').map((p) => p.text).join('\n\n');
+  const away = !document.hasFocus() || document.hidden;
+  if (away && state.prefs.notify && !meta.error) desktopNotify(`${AGENTS[view.agent]?.name || 'Relais'} a terminé`, text.replace(/\s+/g, ' ').slice(0, 140) || 'Réponse prête.');
+  if (state.prefs.sound && !meta.error) chime();
+  const readAloud = (state.voiceConversation || state.prefs.voiceRead) && text && !meta.error;
+  if (readAloud) {
+    speak(text, { lang: state.prefs.voiceLang, voice: state.prefs.voiceName, rate: Number(state.prefs.voiceRate) || 1 }).then(() => {
+      if (state.voiceConversation && !state.streaming) startVoice({ conversation: true });
+    });
+  } else if (state.voiceConversation && !meta.error) startVoice({ conversation: true });
 }
 
 /* ==========================================================================
@@ -614,9 +834,16 @@ async function send(text, override) {
 function newChat() {
   if (state.streaming) state.streaming.controller.abort();
   state.convId = null;
-  $('#convTitle').textContent = 'Nouvelle conversation';
+  state.msgCount = 0;
+  state.convMessages = [];
+  state.todos = null;
+  state.stats = null;
+  state.queue = [];
+  renderQueue();
+  $('#convTitle').textContent = state.project ? `Nouvelle session · ${state.project.name}` : 'Nouvelle conversation';
   renderEmpty();
   renderConvList();
+  if (state.panelOpen) renderInspector();
   closeNav();
   input.focus();
 }
@@ -628,13 +855,57 @@ async function openConv(id) {
     state.convId = c.id;
     $('#convTitle').textContent = c.title;
     state.project = c.project ? await api('/api/projects/info', { method: 'POST', body: { path: c.project } }).catch(() => ({ path: c.project, name: c.project.split(/[\\/]/).pop() })) : null;
-    if (c.perm) state.perm = c.perm;
+    if (c.perm && PERM_INFO[c.perm]) state.perm = c.perm;
     setMode(c.mode || 'claude');
     inner.innerHTML = '';
-    for (const m of c.messages) inner.append(m.role === 'user' ? userEl(m) : assistantEl(m));
+    state.convMessages = c.messages;
+    state.msgCount = c.messages.length;
+    state.todos = null;
+    state.stats = null;
+    c.messages.forEach((m, i) => {
+      if (m.role === 'user') inner.append(userEl(m, i));
+      else {
+        inner.append(assistantEl(m, i, { last: i === c.messages.length - 1 }));
+        const td = (m.parts || []).find((p) => p.type === 'todos');
+        if (td) state.todos = td.items;
+        if (m.stats) state.stats = m.stats;
+      }
+      if (c.compactFrom && i === c.compactFrom - 1) inner.append(userEl({ command: 'compact' }));
+    });
     renderConvList();
     closeNav();
+    if (state.project) refreshGit(); else renderBranch();
+    if (state.panelOpen) renderInspector();
     requestAnimationFrame(() => scrollDown(true));
+  } catch (e) { toast(e.message, true); }
+}
+
+/** Modifier un message déjà envoyé : la conversation repart de ce point. */
+async function editMessage(index) {
+  const m = state.convMessages[index];
+  if (!m || state.streaming) return;
+  const next = prompt('Modifier le message (la suite de la conversation sera remplacée) :', m.text || '');
+  if (next === null || !next.trim()) return;
+  try {
+    if (state.convId) await api(`/api/conversations/${state.convId}/truncate`, { method: 'POST', body: { at: index } });
+    // Retire les messages affichés à partir de celui-ci
+    const els = $$('.msg, .system-note', inner);
+    els.forEach((e) => { if (Number(e.dataset.index) >= index) e.remove(); });
+    state.convMessages = state.convMessages.slice(0, index);
+    state.msgCount = index;
+    state.attachments = m.attachments || [];
+    renderAttachments();
+    send(next.trim());
+  } catch (e) { toast(e.message, true); }
+}
+
+async function forkConversation(at) {
+  if (!state.convId) return toast('Rien à dupliquer pour l’instant.');
+  try {
+    const { id } = await api(`/api/conversations/${state.convId}/fork`, { method: 'POST', body: { at } });
+    await loadConvs();
+    await openConv(id);
+    toast('Conversation dupliquée : tu peux explorer une autre piste.');
   } catch (e) { toast(e.message, true); }
 }
 
@@ -654,10 +925,10 @@ function setMode(mode) {
   const key = state.prefs.sendKey === 'ctrl' ? 'Ctrl+Entrée pour envoyer' : 'Entrée pour envoyer';
   if (state.project) {
     input.placeholder = `Que doit faire ${CODER_NAME[mode]} dans ${state.project.name} ?`;
-    $('#hint').textContent = `${CODER_NAME[mode]} travaille dans ${state.project.name} · ${PERM_INFO[state.perm].label} · ${key}`;
+    $('#hint').textContent = `${key} · / commandes · @ fichiers · ! terminal · Maj+Tab mode`;
   } else {
     input.placeholder = r ? (r.kind === 'image' ? 'Décris l’image voulue…' : 'Ta demande…') : mode === 'claude' ? 'Demande n’importe quoi : « dessine… », « demande à Grok… », @ChatGPT' : `Écris à ${AGENTS[mode].name}…`;
-    $('#hint').textContent = mode === 'claude' ? `${key} · @ pour mentionner une IA · / pour un skill` : `Conversation directe avec ${AGENTS[mode].name} · ${key}`;
+    $('#hint').textContent = mode === 'claude' ? `${key} · / commandes · @ IA · Ctrl M dicter` : `Conversation directe avec ${AGENTS[mode].name} · ${key}`;
   }
   renderProjectUI();
   if (typeof renderModelBtn === 'function' && $('#modelBtn')) renderModelBtn();
@@ -676,14 +947,49 @@ function renderProjectUI() {
   pb.hidden = !p;
   pb.innerHTML = `${PERM_INFO[state.perm].icon}<span>${PERM_INFO[state.perm].label}</span>`;
   pb.dataset.level = state.perm;
-  pb.title = PERM_INFO[state.perm].desc;
+  pb.title = `${PERM_INFO[state.perm].desc} (Maj+Tab pour changer)`;
   $('#relayBtn').hidden = !!p;
+  const eb = $('#effortBtn');
+  eb.hidden = !(p && state.mode === 'claude');
+  eb.dataset.level = state.prefs.effort;
+  eb.innerHTML = `${I.brain}<span>${EFFORT_INFO[state.prefs.effort]?.label || 'Normal'}</span>`;
+  eb.title = `Réflexion : ${EFFORT_INFO[state.prefs.effort]?.desc || ''}`;
+  renderStatusline();
 }
 
 async function setProject(p, { keepConv = false } = {}) {
   state.project = p;
+  state.git = null;
   if (!keepConv) newChat();
   setMode(state.mode);
+  if (p) refreshGit(); else renderBranch();
+  renderConvList();
+}
+
+function setPerm(perm, { quiet = false } = {}) {
+  if (!PERM_INFO[perm]) return;
+  state.perm = perm;
+  state.prefs.perm = perm;
+  savePrefs();
+  closePop();
+  if (!quiet) toast(perm === 'full' ? 'Accès complet : les IA modifient et exécutent sans demander.' : PERM_INFO[perm].label);
+  if (state.panelOpen && state.inspTab === 'session') renderInspector();
+}
+
+/* ---------- Ligne d'état (comme la status line de Claude Code) ---------- */
+function renderStatusline() {
+  const el = $('#statusline');
+  if (!el) return;
+  const bits = [];
+  if (state.project) {
+    bits.push(`<button type="button" class="sl-item sl-perm" data-level="${state.perm}" data-sl="perm" title="Maj+Tab pour changer">${PERM_INFO[state.perm].icon}${esc(PERM_INFO[state.perm].label)}</button>`);
+    if (state.git?.repo) bits.push(`<button type="button" class="sl-item" data-sl="git">${I.branch}${esc(state.git.branch || 'HEAD')}${state.git.files.length ? `<em>±${state.git.files.length}</em>` : ''}</button>`);
+  }
+  const st = state.stats;
+  if (st && (st.tokensIn || st.tokensOut)) bits.push(`<span class="sl-item" title="Contexte du dernier message (entrée / sortie)">${fmtTok(st.tokensIn || 0)} ↑ · ${fmtTok(st.tokensOut || 0)} ↓</span>`);
+  if (st?.cost) bits.push(`<span class="sl-item" title="Coût estimé indiqué par Claude Code">${st.cost.toFixed(2).replace('.', ',')} $</span>`);
+  if (state.voiceConversation) bits.push(`<button type="button" class="sl-item sl-voice" data-sl="voice">${I.mic}Conversation vocale</button>`);
+  el.innerHTML = bits.join('');
 }
 
 function renderChips() {
@@ -727,10 +1033,13 @@ function autoGrow() {
 
 function updateSendBtn() {
   const b = $('#sendBtn');
-  const streaming = !!state.streaming;
+  // Pendant une réponse : texte tapé → « mettre en file », champ vide → « arrêter »
+  const streaming = !!state.streaming && !input.value.trim();
   b.classList.toggle('stop', streaming);
-  b.setAttribute('aria-label', streaming ? 'Arrêter' : 'Envoyer');
-  b.disabled = !streaming && !input.value.trim();
+  b.classList.toggle('queue', !!state.streaming && !!input.value.trim());
+  b.setAttribute('aria-label', streaming ? 'Arrêter' : state.streaming ? 'Mettre en file' : 'Envoyer');
+  b.title = streaming ? 'Arrêter (Échap)' : state.streaming ? 'Envoyer après la réponse en cours' : 'Envoyer';
+  b.disabled = !state.streaming && !input.value.trim();
 }
 
 /* ---------- Popover ---------- */
@@ -749,16 +1058,68 @@ function openRelayPop() {
 
 function slashQuery() { const m = input.value.match(/^\/([\w-]*)$/); return m ? m[1].toLowerCase() : null; }
 
+/* ---------- Commandes « / » (inspirées de Claude Code) ---------- */
+const COMMANDS = [
+  { name: 'clear', alias: ['new'], desc: 'Nouvelle conversation (ou session dans le projet)', run: () => newChat() },
+  { name: 'compact', desc: 'Résume la conversation pour alléger le contexte', arg: true, when: () => !!state.convId, run: (a) => compact(a) },
+  { name: 'plan', desc: 'Passer en mode plan : l’IA propose avant d’agir', when: () => !!state.project, run: () => setPerm('plan') },
+  { name: 'mode', alias: ['permissions'], desc: 'Choisir le niveau d’autorisation', when: () => !!state.project, run: () => openPermPop() },
+  { name: 'effort', alias: ['think'], desc: 'Profondeur de réflexion de Claude', when: () => !!state.project, run: () => openEffortPop() },
+  { name: 'model', desc: 'Changer de modèle', run: () => $('#modelBtn').click() },
+  { name: 'init', desc: 'Analyser le projet et créer son CLAUDE.md', when: () => !!state.project, run: () => send('Analyse ce projet et crée (ou mets à jour) un fichier CLAUDE.md à sa racine : description, structure des dossiers, commandes pour lancer/tester/construire, conventions de code, points d’attention. Reste concis et utile pour une IA qui reprendra le projet.') },
+  { name: 'review', desc: 'Relire les modifications en cours (git diff)', when: () => !!state.project, run: (a) => send(`Relis les modifications non commitées de ce projet (git diff, et nouveaux fichiers). Signale les bugs, les risques et les oublis, classés par gravité, puis propose les corrections.${a ? ` Focus : ${a}` : ''}`) },
+  { name: 'security-review', desc: 'Audit de sécurité des modifications en cours', when: () => !!state.project, run: () => send('Fais une revue de sécurité des modifications non commitées de ce projet : injections, secrets exposés, validation des entrées, permissions, RemoteEvents non sécurisés (Roblox)… Classe par gravité et propose les corrections.') },
+  { name: 'memory', desc: 'Modifier la mémoire du projet (CLAUDE.md)', when: () => !!state.project, run: () => openMemory() },
+  { name: 'diff', desc: 'Voir les fichiers modifiés', when: () => !!state.project, run: () => openPanel('changes') },
+  { name: 'git', desc: 'État Git et commit', when: () => !!state.project, run: () => openPanel('git') },
+  { name: 'todos', desc: 'Liste de tâches de l’IA', run: () => openPanel('tasks') },
+  { name: 'terminal', desc: 'Lancer une commande dans le projet (préfixe « ! »)', when: () => !!state.project, run: () => { input.value = '!'; autoGrow(); input.focus(); } },
+  { name: 'voice', alias: ['dicter'], desc: 'Dicter un message au micro (Ctrl M)', run: () => toggleVoice() },
+  { name: 'talk', alias: ['vocal'], desc: 'Conversation vocale : tu parles, l’IA répond à voix haute', run: () => toggleVoiceConversation() },
+  { name: 'usage', alias: ['cost'], desc: 'Utilisation de tes abonnements', run: () => { openUsagePop(); loadUsage(); } },
+  { name: 'export', desc: 'Exporter la conversation en Markdown', when: () => !!state.convId, run: () => { location.href = `/api/conversations/${state.convId}/export.md`; } },
+  { name: 'fork', desc: 'Dupliquer la conversation pour tester une autre piste', when: () => !!state.convId, run: () => forkConversation() },
+  { name: 'rename', desc: 'Renommer la conversation', when: () => !!state.convId, run: (a) => renameConv(state.convId, a) },
+  { name: 'resume', desc: 'Reprendre une conversation précédente', run: () => openPalette('conv') },
+  { name: 'mcp', desc: 'Serveurs MCP supplémentaires pour Claude Code', run: () => openSettings('mcp') },
+  { name: 'skills', desc: 'Gérer les skills', run: () => openSkills() },
+  { name: 'project', alias: ['projets', 'cd'], desc: 'Ouvrir un projet (dossier)', run: () => openProjects() },
+  { name: 'settings', alias: ['config'], desc: 'Réglages', run: () => openSettings() },
+  { name: 'help', alias: ['raccourcis'], desc: 'Raccourcis clavier et commandes', run: () => openHelp() },
+];
+const visibleCommands = () => COMMANDS.filter((c) => !c.when || c.when());
+
+/** Exécute « /commande arguments ». Renvoie false si ce n'est pas une commande connue (skill ou texte normal). */
+function runSlash(text) {
+  const m = text.match(/^\/([\w-]+)\s*([\s\S]*)$/);
+  if (!m) return false;
+  const name = m[1].toLowerCase();
+  const cmd = visibleCommands().find((c) => c.name === name || c.alias?.includes(name));
+  if (cmd) { closePop(); cmd.run(m[2].trim()); return true; }
+  const sk = state.skills.find((s) => s.slug === name);
+  if (sk) {
+    setSkill(sk.slug);
+    if (m[2].trim()) { const rest = m[2].trim(); setTimeout(() => send(rest), 0); }
+    return true;
+  }
+  return false;
+}
+
 function openSkillPop(force) {
   const q = force ? '' : slashQuery();
   if (q === null) { if (state.pop === 'skill') closePop(); return; }
   state.pop = 'skill';
   $('#skillBtn').setAttribute('aria-expanded', 'true');
-  const items = state.skills.filter((s) => !q || s.slug.includes(q) || s.name.toLowerCase().includes(q));
-  state.popIndex = Math.min(state.popIndex, Math.max(items.length - 1, 0));
-  pop.innerHTML = `<div class="pop-group">Skills</div>${items.length
-    ? items.map((s, i) => `<button type="button" class="pop-item ${i === state.popIndex ? 'active' : ''}" data-pick-skill="${s.slug}"><b>${esc(s.name)}<code>/${s.slug}</code></b><i class="dot" data-agent="skill" style="grid-row:span 2"></i><span>${esc(s.description)}</span></button>`).join('')
-    : '<div class="pop-empty">Aucun skill. Crée-en un depuis le panneau Skills.</div>'}`;
+  const cmds = force ? [] : visibleCommands().filter((c) => !q || c.name.startsWith(q) || c.alias?.some((a) => a.startsWith(q)) || (q.length > 2 && c.desc.toLowerCase().includes(q)));
+  const skills = state.skills.filter((s) => !q || s.slug.includes(q) || s.name.toLowerCase().includes(q));
+  const total = cmds.length + skills.length;
+  state.popIndex = Math.min(state.popIndex, Math.max(total - 1, 0));
+  let i = 0;
+  const cmdHtml = cmds.map((c) => `<button type="button" class="pop-item cmd ${i++ === state.popIndex ? 'active' : ''}" data-pick-cmd="${c.name}"><b><code>/${c.name}</code>${c.arg ? '<em> [texte]</em>' : ''}</b><span>${esc(c.desc)}</span></button>`).join('');
+  const skillHtml = skills.map((s) => `<button type="button" class="pop-item ${i++ === state.popIndex ? 'active' : ''}" data-pick-skill="${s.slug}"><b>${esc(s.name)}<code>/${s.slug}</code></b><i class="dot" data-agent="skill" style="grid-row:span 2"></i><span>${esc(s.description)}</span></button>`).join('');
+  pop.innerHTML = `${cmds.length ? `<div class="pop-group">Commandes</div>${cmdHtml}` : ''}
+    ${skills.length ? `<div class="pop-group">Skills</div>${skillHtml}` : ''}
+    ${!total ? '<div class="pop-empty">Aucune commande ni skill. <code>/help</code> liste tout.</div>' : ''}`;
   pop.hidden = false;
 }
 
@@ -768,6 +1129,16 @@ function pickSkill(slug) {
   closePop();
   autoGrow();
   input.focus();
+}
+
+function pickCommand(name) {
+  const c = COMMANDS.find((x) => x.name === name);
+  if (!c) return;
+  if (c.arg) { input.value = `/${name} `; closePop(); autoGrow(); input.focus(); return; }
+  input.value = '';
+  autoGrow();
+  closePop();
+  c.run('');
 }
 
 function pickRelay(id) {
@@ -802,22 +1173,35 @@ const MENTIONS = [
 ];
 function mentionQuery() {
   const before = input.value.slice(0, input.selectionStart ?? input.value.length);
-  const m = before.match(/(^|\s)@(\w*)$/);
-  return m ? m[2].toLowerCase() : null;
+  const m = before.match(/(^|\s)@([\w./\\-]*)$/);
+  return m ? m[2] : null;
 }
-function openMentionPop() {
-  const q = mentionQuery();
-  if (q === null) { if (state.pop === 'mention') closePop(); return; }
-  const items = MENTIONS.filter((m) => m.tag.toLowerCase().startsWith(q));
+let fileReq = 0;
+async function openMentionPop() {
+  const raw = mentionQuery();
+  if (raw === null) { if (state.pop === 'mention') closePop(); return; }
+  const q = raw.toLowerCase();
+  const ais = state.project ? [] : MENTIONS.filter((m) => m.tag.toLowerCase().startsWith(q));
+  let files = [];
+  if (state.project) {
+    const my = ++fileReq;
+    try { files = await api(`/api/projects/files?path=${encodeURIComponent(state.project.path)}&q=${encodeURIComponent(raw)}`); } catch { files = []; }
+    if (my !== fileReq || mentionQuery() !== raw) return;
+  }
+  const items = [...ais.map((m) => ({ type: 'ai', ...m })), ...files.slice(0, 30).map((f) => ({ type: 'file', ...f }))];
   if (!items.length) { closePop(); return; }
   state.pop = 'mention';
   state.popIndex = Math.min(state.popIndex, items.length - 1);
-  pop.innerHTML = `<div class="pop-group">Mentionner une IA</div>${items.map((m, i) => `<button type="button" class="pop-item ${i === state.popIndex ? 'active' : ''}" data-mention="${m.tag}"><b>@${m.tag}</b><i class="dot" data-agent="${m.agent}" style="grid-row:span 2"></i><span>${esc(m.hint)}</span></button>`).join('')}`;
+  pop.innerHTML = `${ais.length ? '<div class="pop-group">Mentionner une IA</div>' : ''}${items.map((m, i) => {
+    if (m.type === 'ai') return `<button type="button" class="pop-item ${i === state.popIndex ? 'active' : ''}" data-mention="${m.tag}"><b>@${m.tag}</b><i class="dot" data-agent="${m.agent}" style="grid-row:span 2"></i><span>${esc(m.hint)}</span></button>`;
+    const header = i === ais.length ? `<div class="pop-group">Fichiers de ${esc(state.project.name)}</div>` : '';
+    return `${header}<button type="button" class="pop-item file-item ${i === state.popIndex ? 'active' : ''}" data-mention="${esc(m.path)}${m.dir ? '/' : ''}"><b>${m.dir ? FOLDER_ICON : I.file}${esc(m.path.split('/').pop())}${m.dir ? '/' : ''}</b><span>${esc(m.path)}</span></button>`;
+  }).join('')}`;
   pop.hidden = false;
 }
 function pickMention(tag) {
   const pos = input.selectionStart ?? input.value.length;
-  const before = input.value.slice(0, pos).replace(/@\w*$/, `@${tag} `);
+  const before = input.value.slice(0, pos).replace(/@[\w./\\-]*$/, `@${tag}${tag.endsWith('/') ? '' : ' '}`);
   input.value = before + input.value.slice(pos);
   input.setSelectionRange(before.length, before.length);
   closePop();
@@ -836,7 +1220,7 @@ input.addEventListener('keydown', (e) => {
     if ((e.key === 'Enter' || e.key === 'Tab') && items[state.popIndex]) { e.preventDefault(); pickMention(items[state.popIndex].dataset.mention); return; }
   }
   if (state.pop === 'skill') {
-    const items = $$('[data-pick-skill]', pop);
+    const items = $$('[data-pick-skill], [data-pick-cmd]', pop);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       state.popIndex = (state.popIndex + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % Math.max(items.length, 1);
@@ -844,7 +1228,25 @@ input.addEventListener('keydown', (e) => {
       items[state.popIndex]?.scrollIntoView({ block: 'nearest' });
       return;
     }
-    if ((e.key === 'Enter' || e.key === 'Tab') && items[state.popIndex]) { e.preventDefault(); pickSkill(items[state.popIndex].dataset.pickSkill); return; }
+    const it = items[state.popIndex];
+    if (it && e.key === 'Tab') { e.preventDefault(); input.value = `/${it.dataset.pickCmd || it.dataset.pickSkill} `; closePop(); autoGrow(); return; }
+    if (it && e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (it.dataset.pickCmd) pickCommand(it.dataset.pickCmd); else pickSkill(it.dataset.pickSkill);
+      return;
+    }
+  }
+  if (e.key === 'Tab' && e.shiftKey && state.project) {
+    e.preventDefault();
+    const i = PERM_CYCLE.indexOf(state.perm);
+    setPerm(PERM_CYCLE[(i + 1) % PERM_CYCLE.length]);
+    return;
+  }
+  if (e.key === 'ArrowUp' && !input.value && !state.pop) {
+    // Flèche haut dans un champ vide : rappelle le dernier message, comme dans un terminal.
+    const lastUser = [...state.convMessages].reverse().find((m) => m.role === 'user' && m.command !== 'compact');
+    if (lastUser) { e.preventDefault(); input.value = lastUser.text; autoGrow(); }
+    return;
   }
   if (e.key === 'Escape' && state.pop) { closePop(); return; }
   if (e.key === 'Backspace' && !input.value && (state.skill || state.relay)) { if (state.skill) setSkill(null); else setRelay(null); return; }
@@ -854,7 +1256,7 @@ input.addEventListener('keydown', (e) => {
   }
 });
 
-$('#composer').addEventListener('submit', (e) => { e.preventDefault(); if (state.streaming) state.streaming.controller.abort(); else send(input.value); });
+$('#composer').addEventListener('submit', (e) => { e.preventDefault(); if (state.streaming && !input.value.trim()) state.streaming.controller.abort(); else send(input.value); });
 $('#modeSwitch').addEventListener('click', (e) => { const b = e.target.closest('button[data-mode]'); if (b) { setMode(b.dataset.mode); renderChips(); input.focus(); } });
 $('#relayBtn').addEventListener('click', () => (state.pop === 'relay' ? closePop() : openRelayPop()));
 $('#skillBtn').addEventListener('click', () => { if (state.pop === 'skill') return closePop(); state.popIndex = 0; openSkillPop(true); });
@@ -889,6 +1291,9 @@ const TABS = [
   ['claude', 'Claude', I.spark],
   ['images', 'Images', I.image],
   ['projet', 'Projet', I.folder],
+  ['voix', 'Voix', I.mic],
+  ['mcp', 'Serveurs MCP', I.server],
+  ['raccourcis', 'Raccourcis', I.keyboard],
   ['donnees', 'Données', I.data],
 ];
 let settingsTab = 'general';
@@ -929,7 +1334,15 @@ function renderTab() {
       <div class="group">
         ${row('Thème', '', prefSeg('theme', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']]))}
         ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
-        ${row('Étapes dépliées', 'Afficher le détail de chaque délégation par défaut.', `<input type="checkbox" class="switch" data-pref-bool="stepsOpen" ${state.prefs.stepsOpen ? 'checked' : ''}>`)}
+        ${row('Largeur du fil', '', prefSeg('width', [['normal', 'Normale'], ['wide', 'Large'], ['full', 'Pleine']]))}
+        ${row('Étapes dépliées', 'Afficher le détail de chaque action par défaut.', `<input type="checkbox" class="switch" data-pref-bool="stepsOpen" ${state.prefs.stepsOpen ? 'checked' : ''}>`)}
+        ${row('Afficher la réflexion', 'Montrer les blocs « Réflexion » de Claude et Codex (repliés).', `<input type="checkbox" class="switch" data-pref-bool="showThinking" ${state.prefs.showThinking ? 'checked' : ''}>`)}
+        ${row('Panneau de travail ouvert', 'Tâches, fichiers modifiés et Git à droite (Ctrl J).', `<input type="checkbox" class="switch" data-pref-bool="panel" ${state.prefs.panel ? 'checked' : ''}>`)}
+      </div>
+      <div class="group-title">Notifications</div>
+      <div class="group">
+        ${row('Notification de fin', 'Quand une réponse ou une demande d’autorisation arrive et que Relais n’est pas au premier plan.', `<input type="checkbox" class="switch" data-pref-bool="notify" ${state.prefs.notify ? 'checked' : ''}>`)}
+        ${row('Son de fin', 'Un petit son à la fin de chaque réponse.', `<input type="checkbox" class="switch" data-pref-bool="sound" ${state.prefs.sound ? 'checked' : ''}>`)}
       </div>
       <div class="group-title">Discussion</div>
       <div class="group">
@@ -982,7 +1395,9 @@ function renderTab() {
       <div class="group-title">Coder dans un projet</div>
       <div class="group">
         ${row('Projets', 'Ouvre un dossier pour que Claude Code, Codex ou Grok y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
-        ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['ask', 'Demander'], ['full', 'Complet']]))}
+        ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
+        ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
+        ${state.project ? row(`Mémoire de ${esc(state.project.name)}`, 'CLAUDE.md : les consignes que Claude Code relit à chaque session.', '<button type="button" class="btn sm" data-open-memory>Modifier CLAUDE.md</button>') : ''}
       </div>
       <p class="note warn">Relais refuse les dossiers trop larges (disque entier, dossier utilisateur, Bureau, Documents…). Avec « Accès complet », garde une sauvegarde de ton projet (Git).</p>
       <details ${String(s.CURSOR_ENABLED) === 'true' ? 'open' : ''}><summary class="group-title" style="cursor:pointer">Optionnel : Cursor</summary>
@@ -993,6 +1408,10 @@ function renderTab() {
         ${row('Commandes sans confirmation', 'Cursor peut exécuter des commandes dans le dossier.', sw('CURSOR_ALLOW_WRITES', s.CURSOR_ALLOW_WRITES))}
       </div></details>`;
   }
+
+  if (tab === 'voix') renderVoiceTab();
+  if (tab === 'mcp') renderMcpTab();
+  if (tab === 'raccourcis') { mBody.innerHTML = helpHtml(); mFoot.hidden = true; }
 
   if (tab === 'donnees') {
     mBody.innerHTML = `
@@ -1446,7 +1865,14 @@ mBody.addEventListener('change', (e) => {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => saveSettings({ [t.dataset.k]: v }), 150);
   }
-  if (t.dataset.prefBool) { state.prefs[t.dataset.prefBool] = t.checked; savePrefs(); }
+  if (t.dataset.prefBool) {
+    state.prefs[t.dataset.prefBool] = t.checked;
+    savePrefs();
+    if (t.dataset.prefBool === 'panel') setPanel(t.checked);
+    if (t.dataset.prefBool === 'showThinking') $$('.thinking-step').forEach((x) => x.classList.toggle('is-hidden', !t.checked));
+    if (t.dataset.prefBool === 'notify' && t.checked && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  }
+  if (t.dataset.prefSel) { state.prefs[t.dataset.prefSel] = t.type === 'range' ? Number(t.value) : t.value; savePrefs(); if (t.dataset.prefSel === 'voiceEngine') renderTab(); }
 });
 
 /* ---------- Clics ---------- */
@@ -1467,12 +1893,7 @@ document.addEventListener('click', async (e) => {
   }
   if ((el = t.closest('[data-rename]'))) {
     e.stopPropagation();
-    const c = state.convs.find((x) => x.id === el.dataset.rename);
-    const title = prompt('Nouveau titre', c?.title || '');
-    if (!title) return;
-    await api(`/api/conversations/${el.dataset.rename}`, { method: 'PATCH', body: { title } });
-    if (el.dataset.rename === state.convId) $('#convTitle').textContent = title;
-    return loadConvs();
+    return renameConv(el.dataset.rename);
   }
   if ((el = t.closest('[data-conv]'))) return openConv(el.dataset.conv);
   if ((el = t.closest('[data-open-settings]'))) return openSettings(el.dataset.openSettings || 'general');
@@ -1514,14 +1935,63 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-forget-project]'))) { await api('/api/projects/forget', { method: 'POST', body: { path: el.dataset.forgetProject } }); return openProjects(); }
   if ((el = t.closest('[data-reveal]'))) { await api('/api/projects/reveal', { method: 'POST', body: { path: el.dataset.reveal } }).catch((err) => toast(err.message, true)); return; }
   if ((el = t.closest('[data-close-project]'))) { closeModal(); return setProject(null); }
-  if ((el = t.closest('[data-set-perm]'))) {
-    state.perm = el.dataset.setPerm;
-    state.prefs.perm = state.perm;
-    savePrefs();
-    closePop();
-    if (state.perm === 'full') toast('Accès complet : les IA modifient et exécutent sans demander.');
+  if ((el = t.closest('[data-set-perm]'))) return setPerm(el.dataset.setPerm);
+  if ((el = t.closest('[data-set-effort]'))) { state.prefs.effort = el.dataset.setEffort; savePrefs(); closePop(); return toast(`Réflexion : ${EFFORT_INFO[state.prefs.effort].label}`); }
+  if ((el = t.closest('[data-pick-cmd]'))) return pickCommand(el.dataset.pickCmd);
+  if ((el = t.closest('[data-copy-user]'))) {
+    const i = Number(el.closest('.msg').dataset.index);
+    const m = state.convMessages[i];
+    if (await copy(m?.text ?? $('.bubble', el.closest('.msg')).textContent)) toast('Message copié');
     return;
   }
+  if ((el = t.closest('[data-edit-msg]'))) return editMessage(Number(el.closest('.msg').dataset.index));
+  if ((el = t.closest('[data-fork-msg]'))) return forkConversation(Number(el.closest('.msg').dataset.index) + 1);
+  if ((el = t.closest('[data-speak-msg]'))) {
+    const view = el.closest('.msg')._view;
+    if (el.classList.contains('on')) { stopSpeaking(); el.classList.remove('on'); return; }
+    $$('[data-speak-msg].on').forEach((b) => b.classList.remove('on'));
+    el.classList.add('on');
+    speak((view?.parts || []).filter((p) => p.type === 'text').map((p) => p.text).join('\n\n'), { lang: state.prefs.voiceLang, voice: state.prefs.voiceName, rate: Number(state.prefs.voiceRate) || 1 })
+      .then(() => el.classList.remove('on'));
+    return;
+  }
+  if ((el = t.closest('[data-plan-approve]'))) {
+    const card = el.closest('.plan-card');
+    $('.plan-actions', card)?.remove();
+    setPerm(el.dataset.planApprove, { quiet: true });
+    toast(`Plan approuvé · ${PERM_INFO[state.perm].label}`);
+    return send('Le plan est approuvé. Exécute-le maintenant, étape par étape, puis résume ce qui a été fait.');
+  }
+  if ((el = t.closest('[data-plan-revise]'))) { input.value = 'Modifie le plan : '; autoGrow(); input.focus(); return; }
+  if ((el = t.closest('[data-queue-del]'))) { state.queue.splice(Number(el.dataset.queueDel), 1); return renderQueue(); }
+  if ((el = t.closest('[data-queue-edit]'))) {
+    const [m] = state.queue.splice(Number(el.dataset.queueEdit), 1);
+    renderQueue();
+    if (m) { input.value = m.text; state.attachments = m.attachments || []; renderAttachments(); autoGrow(); input.focus(); }
+    return;
+  }
+  if ((el = t.closest('[data-att-remove]'))) { state.attachments = state.attachments.filter((a) => a.id !== el.dataset.attRemove); return renderAttachments(); }
+  if ((el = t.closest('[data-conv-filter]'))) { state.convFilter = el.dataset.convFilter; return renderConvList(); }
+  if ((el = t.closest('[data-insp]'))) { state.inspTab = el.dataset.insp; return renderInspector(); }
+  if ((el = t.closest('[data-insp-diff]'))) return showChangeDiff(Number(el.dataset.inspDiff));
+  if ((el = t.closest('[data-git-file]'))) return showGitDiff(el.dataset.gitFile);
+  if ((el = t.closest('[data-git-refresh]'))) { await refreshGit(); return renderInspector(); }
+  if ((el = t.closest('[data-git-commit]'))) return gitCommitFromPanel(el);
+  if ((el = t.closest('[data-git-ask]'))) { input.value = 'Écris un message de commit clair pour les modifications en cours, puis fais le commit.'; autoGrow(); return input.focus(); }
+  if ((el = t.closest('[data-sl]'))) {
+    const k = el.dataset.sl;
+    if (k === 'perm') return state.pop === 'perm' ? closePop() : openPermPop();
+    if (k === 'git') return openPanel('git');
+    if (k === 'voice') return toggleVoiceConversation();
+    return;
+  }
+  if ((el = t.closest('[data-open-memory]'))) return openMemory(el.dataset.openMemory || 'CLAUDE.md');
+  if ((el = t.closest('[data-save-memory]'))) return saveMemory(el);
+  if ((el = t.closest('[data-save-mcp]'))) return saveMcp(el);
+  if ((el = t.closest('[data-mcp-example]'))) { const ta = $('#mcpText'); ta.value = MCP_EXAMPLE; return ta.focus(); }
+  if ((el = t.closest('[data-test-tts]'))) return speak('Bonjour ! Voici la voix que Relais utilisera pour lire les réponses.', { lang: state.prefs.voiceLang, voice: state.prefs.voiceName, rate: Number(state.prefs.voiceRate) || 1 });
+  if ((el = t.closest('[data-test-mic]'))) { closeModal(); return startVoice(); }
+  if ((el = t.closest('[data-palette-item]'))) return runPaletteItem(Number(el.dataset.paletteItem));
   if ((el = t.closest('[data-code-starter]'))) {
     const s = CODE_STARTERS[Number(el.dataset.codeStarter)];
     input.value = s.p;
@@ -1692,8 +2162,18 @@ document.addEventListener('click', async (e) => {
     toast(`Modèle : ${modelLabel(el.dataset.key, el.dataset.pickModel)}`);
     return;
   }
-  if (state.pop && !t.closest('#popover') && !t.closest('.tool-btn') && !t.closest('#usageBar')) closePop();
+  if (state.pop && !t.closest('#popover') && !t.closest('.tool-btn') && !t.closest('#usageBar') && !t.closest('.sl-item') && !t.closest('#convMenuBtn')) closePop();
 });
+
+async function renameConv(id, title) {
+  if (!id) return;
+  const c = state.convs.find((x) => x.id === id);
+  const next = title || prompt('Nouveau titre', c?.title || '');
+  if (!next) return;
+  await api(`/api/conversations/${id}`, { method: 'PATCH', body: { title: next } });
+  if (id === state.convId) $('#convTitle').textContent = next;
+  loadConvs();
+}
 
 mBody.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset.key) { e.preventDefault(); $(`[data-save-key="${e.target.dataset.key}"]`)?.click(); }
@@ -1732,14 +2212,26 @@ $('#chips').addEventListener('change', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest?.('[data-conv]') && e.key === 'Enter') openConv(e.target.closest('[data-conv]').dataset.conv);
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); newChat(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); }
+  const mod = e.ctrlKey || e.metaKey;
+  const k = e.key.toLowerCase();
+  if (mod && e.shiftKey && k === 'p') { e.preventDefault(); return openPalette(); }
+  if (mod && !e.shiftKey && k === 'p') { e.preventDefault(); return openPalette('conv'); }
+  if (mod && k === 'k') { e.preventDefault(); newChat(); }
+  if (mod && e.key === ',') { e.preventDefault(); openSettings(); }
+  if (mod && k === 'b') { e.preventDefault(); toggleSidebar(); }
+  if (mod && k === 'j') { e.preventDefault(); setPanel(!state.panelOpen); }
+  if (mod && k === 'm') { e.preventDefault(); toggleVoice(); }
+  if (mod && e.key === '/') { e.preventDefault(); openHelp(); }
+  if (mod && e.shiftKey && k === 'e' && state.convId) { e.preventDefault(); location.href = `/api/conversations/${state.convId}/export.md`; }
+  if (e.key === 'Escape' && !$('#palette').hidden) { closePalette(); return; }
+  if (e.key === 'Escape' && voice.busy) { voice.cancel(); stopVoiceConversation(); return; }
   if (e.key === 'Escape') {
     if (!$('#designViewer').hidden) $('#designViewer [data-dv-close]').click();
     else if (!lightbox.hidden) lightbox.hidden = true;
     else if (!modal.hidden) closeModal();
     else if (state.pop) closePop();
     else if (state.streaming) state.streaming.controller.abort();
+    else { stopSpeaking(); stopVoiceConversation(); }
   }
 });
 
@@ -1937,12 +2429,601 @@ function syncHostBackground() {
 }
 setupNativeWindow();
 
+/* ==========================================================================
+   Pièces jointes : bouton +, glisser-déposer, coller une image
+   ========================================================================== */
+const MAX_ATTACH = 12;
+
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error(`Lecture impossible : ${file.name}`));
+    r.readAsDataURL(file);
+  });
+}
+
+async function addFiles(files) {
+  const list = [...files].slice(0, MAX_ATTACH - state.attachments.length);
+  if (!list.length) return toast(`${MAX_ATTACH} pièces jointes maximum.`, true);
+  for (const f of list) {
+    if (f.size > 20 * 1024 * 1024) { toast(`${f.name} : 20 Mo maximum.`, true); continue; }
+    const tmp = { id: `tmp-${Math.random().toString(36).slice(2)}`, name: f.name || 'image.png', size: f.size, kind: /^image\//.test(f.type) ? 'image' : 'file', uploading: true };
+    state.attachments.push(tmp);
+    renderAttachments();
+    try {
+      const data = await readAsDataUrl(f);
+      const saved = await api('/api/upload', { method: 'POST', body: { name: tmp.name, data } });
+      Object.assign(tmp, saved, { uploading: false });
+    } catch (e) {
+      state.attachments = state.attachments.filter((a) => a !== tmp);
+      toast(e.message, true);
+    }
+    renderAttachments();
+  }
+}
+
+function renderAttachments() {
+  const el = $('#attachList');
+  el.hidden = !state.attachments.length;
+  el.innerHTML = state.attachments.map((a) => `<span class="att ${a.uploading ? 'busy' : ''}" title="${esc(a.name)}">
+    ${a.kind === 'image' && a.url ? `<img src="${esc(a.url)}" alt="">` : `<span class="att-ico">${a.uploading ? '<span class="spinner"></span>' : I.file}</span>`}
+    <span class="att-name">${esc(a.name)}</span><i>${fmtSize(a.size)}</i>
+    <button type="button" class="x" data-att-remove="${esc(a.id)}" aria-label="Retirer">${I.x}</button></span>`).join('');
+  updateSendBtn();
+}
+
+$('#attachBtn').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+input.addEventListener('paste', (e) => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+{
+  const composer = $('#composer');
+  let depth = 0;
+  document.addEventListener('dragenter', (e) => { if (e.dataTransfer?.types?.includes('Files')) { depth++; composer.classList.add('dragging'); } });
+  document.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) composer.classList.remove('dragging'); });
+  document.addEventListener('dragover', (e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); });
+  document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    depth = 0;
+    composer.classList.remove('dragging');
+    addFiles(e.dataTransfer.files);
+  });
+}
+
+/* ==========================================================================
+   Voix : dictée, conversation vocale
+   ========================================================================== */
+function voiceEngine() {
+  const pref = state.prefs.voiceEngine;
+  if (pref === 'browser') return 'browser';
+  if (pref === 'server') return 'server';
+  // Auto : la reconnaissance du navigateur ne marche pas dans la fenêtre Relais.exe (WebView2).
+  if (state.status?.voice?.openai) return 'server';
+  if (voiceSupport.browser && !host) return 'browser';
+  return 'server';
+}
+
+let voiceTimer = null;
+let voiceBase = '';
+const voice = new VoiceInput({
+  engine: voiceEngine,
+  lang: () => state.prefs.voiceLang || 'fr-FR',
+  onState: (s) => {
+    const live = $('#voiceLive');
+    const mic = $('#micBtn');
+    mic.classList.toggle('on', s !== 'idle');
+    mic.classList.toggle('conv', !!state.voiceConversation);
+    live.hidden = s === 'idle';
+    live.dataset.state = s;
+    clearInterval(voiceTimer);
+    if (s === 'listening') {
+      const t0 = Date.now();
+      $('#voiceText').textContent = state.voiceConversation ? 'Conversation vocale : parle, j’envoie dès que tu t’arrêtes…' : 'Je t’écoute…';
+      voiceTimer = setInterval(() => {
+        const sec = Math.floor((Date.now() - t0) / 1000);
+        $('#voiceTime').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      }, 250);
+    }
+    if (s === 'transcribing') $('#voiceText').textContent = 'Transcription…';
+  },
+  onLevel: (lv) => {
+    $$('#vu i').forEach((b, i) => { const k = 0.35 + 0.65 * Math.abs(Math.sin(i * 1.7 + Date.now() / 140)); b.style.transform = `scaleY(${Math.max(0.12, Math.min(1, lv * k * 1.6))})`; });
+  },
+  onText: (text, final) => {
+    const joined = `${voiceBase}${voiceBase && text ? ' ' : ''}${text}`;
+    if (!final) { $('#voiceText').textContent = text || 'Je t’écoute…'; input.value = joined; autoGrow(); return; }
+    input.value = joined;
+    autoGrow();
+    input.focus();
+    if (!text) { if (state.voiceConversation) toast('Je n’ai rien entendu. Conversation vocale en pause.'); stopVoiceConversation(); return; }
+    if (state.voiceConversation || state.prefs.voiceAutoSend) send(input.value);
+  },
+  onError: (msg) => { toast(msg, true); stopVoiceConversation(); },
+});
+
+function startVoice({ conversation = false } = {}) {
+  if (!voiceSupport.mic && voiceEngine() === 'server') return toast('Micro indisponible dans ce navigateur.', true);
+  if (voice.busy) return;
+  stopSpeaking();
+  voiceBase = conversation ? '' : input.value.trim();
+  voice.start({ autoStop: conversation || state.prefs.voiceAutoSend });
+}
+
+function toggleVoice() {
+  if (voice.busy) return voice.stop();
+  startVoice({ conversation: !!state.voiceConversation });
+}
+
+function toggleVoiceConversation() {
+  if (state.voiceConversation) { stopVoiceConversation(); voice.cancel(); stopSpeaking(); toast('Conversation vocale terminée'); return; }
+  state.voiceConversation = true;
+  renderStatusline();
+  toast('Conversation vocale : parle, Relais envoie à chaque pause et lit la réponse. Échap pour arrêter.');
+  startVoice({ conversation: true });
+}
+
+function stopVoiceConversation() {
+  if (!state.voiceConversation) return;
+  state.voiceConversation = false;
+  $('#micBtn').classList.remove('conv');
+  renderStatusline();
+}
+
+{
+  // Clic : dicter. Clic long (0,6 s) : conversation vocale.
+  const mic = $('#micBtn');
+  let press = null;
+  let long = false;
+  mic.addEventListener('pointerdown', () => { long = false; press = setTimeout(() => { long = true; toggleVoiceConversation(); }, 600); });
+  mic.addEventListener('pointerup', () => clearTimeout(press));
+  mic.addEventListener('pointerleave', () => clearTimeout(press));
+  mic.addEventListener('click', () => { if (!long) toggleVoice(); });
+  $('#voiceStop').addEventListener('click', () => voice.stop());
+  $('#voiceCancel').addEventListener('click', () => { voice.cancel(); stopVoiceConversation(); });
+}
+
+function renderVoiceTab() {
+  const p = state.prefs;
+  const vs = state.status?.voice || {};
+  const voices = listVoices();
+  const lang = p.voiceLang || 'fr-FR';
+  const forLang = voices.filter((v) => v.lang?.startsWith(lang.slice(0, 2)));
+  const engineNow = voiceEngine();
+  const engineLabel = engineNow === 'browser' ? 'reconnaissance du navigateur' : vs.openai ? 'transcription OpenAI (clé API)' : vs.windows ? 'reconnaissance vocale de Windows' : 'aucun moteur disponible';
+  const ps = (k, opts) => `<select class="select" data-pref-sel="${k}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  mBody.innerHTML = `
+    <div class="setup" style="margin:0 0 16px"><span class="design-ico big">${I.mic}</span><div><b>Parle à tes IA</b><span>Clique sur le micro (ou Ctrl M) pour dicter. Clic long sur le micro ou <code>/talk</code> : conversation vocale, Relais envoie à chaque pause et lit la réponse à voix haute. Moteur actuel : <strong>${esc(engineLabel)}</strong>.</span></div>
+      <button type="button" class="btn" data-test-mic>${I.mic}Essayer</button></div>
+    <div class="group-title">Dictée</div>
+    <div class="group">
+      ${row('Moteur de transcription', 'Auto : OpenAI si une clé API OpenAI est enregistrée, sinon Windows (hors ligne), ou le navigateur hors de Relais.exe.', ps('voiceEngine', [['auto', 'Automatique'], ['server', 'Relais (OpenAI ou Windows)'], ['browser', 'Navigateur (Edge, Chrome)']]))}
+      ${row('Langue', '', ps('voiceLang', [['fr-FR', 'Français (France)'], ['fr-CA', 'Français (Canada)'], ['fr-BE', 'Français (Belgique)'], ['en-US', 'Anglais (US)'], ['en-GB', 'Anglais (UK)'], ['es-ES', 'Espagnol'], ['de-DE', 'Allemand'], ['it-IT', 'Italien'], ['pt-BR', 'Portugais (Brésil)']]))}
+      ${row('Envoyer automatiquement', 'Le message part dès que tu t’arrêtes de parler.', `<input type="checkbox" class="switch" data-pref-bool="voiceAutoSend" ${p.voiceAutoSend ? 'checked' : ''}>`)}
+      ${row('Modèle OpenAI', 'Utilisé avec une clé API OpenAI.', sel('VOICE_OPENAI_MODEL', [['gpt-4o-mini-transcribe', 'gpt-4o-mini-transcribe (rapide)'], ['gpt-4o-transcribe', 'gpt-4o-transcribe (précis)'], ['whisper-1', 'whisper-1']], settings().VOICE_OPENAI_MODEL || 'gpt-4o-mini-transcribe'))}
+    </div>
+    <div class="group-title">Lecture à voix haute</div>
+    <div class="group">
+      ${row('Lire chaque réponse', 'Sinon, bouton « Lire » sous chaque réponse.', `<input type="checkbox" class="switch" data-pref-bool="voiceRead" ${p.voiceRead ? 'checked' : ''}>`)}
+      ${row('Voix', voices.length ? `${forLang.length} voix pour cette langue sur ce PC.` : 'Aucune voix détectée (Paramètres Windows → Heure et langue → Voix).', ps('voiceName', [['', 'Voix par défaut'], ...(forLang.length ? forLang : voices).map((v) => [v.name, `${v.name}${v.local ? '' : ' (en ligne)'}`])]))}
+      ${row('Vitesse', '', `<div class="range"><input type="range" min="0.6" max="1.8" step="0.1" data-pref-sel="voiceRate" value="${esc(p.voiceRate || 1)}" oninput="this.nextElementSibling.value=this.value"><output>${esc(p.voiceRate || 1)}</output></div>`)}
+      ${row('Tester la voix', '', `<button type="button" class="btn sm" data-test-tts>${I.speaker}Écouter</button>`)}
+    </div>
+    <p class="note">La reconnaissance Windows fonctionne hors ligne mais est moins précise ; pour la meilleure qualité, ajoute une clé API OpenAI (Réglages → Connexions → ChatGPT → Clé API). Astuce : la dictée intégrée de Windows (Win + H) marche aussi dans le champ de message.</p>`;
+}
+if (voiceSupport.tts) speechSynthesis.addEventListener?.('voiceschanged', () => { if (!modal.hidden && settingsTab === 'voix') renderTab(); });
+
+/* ==========================================================================
+   Notifications
+   ========================================================================== */
+function desktopNotify(title, body) {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      const n = new Notification(title, { body, icon: '/favicon.svg', silent: !state.prefs.sound });
+      n.onclick = () => { window.focus(); n.close(); };
+    } else if (Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  } catch { /* notifications indisponibles */ }
+}
+
+let audioCtx = null;
+function chime() {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    [660, 880].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.frequency.value = f;
+      o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, t + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.12, t + i * 0.12 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.35);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t + i * 0.12);
+      o.stop(t + i * 0.12 + 0.4);
+    });
+  } catch { /* son indisponible */ }
+}
+
+/* ==========================================================================
+   Effort de réflexion & menu de la conversation
+   ========================================================================== */
+function openEffortPop() {
+  state.pop = 'effort';
+  $('#effortBtn').setAttribute('aria-expanded', 'true');
+  pop.innerHTML = `<div class="pop-group">Réflexion de Claude Code</div>${Object.entries(EFFORT_INFO).map(([k, v]) => `
+    <button type="button" class="pop-item perm-item ${state.prefs.effort === k ? 'active' : ''}" data-set-effort="${k}"><b>${I.brain}${v.label}${state.prefs.effort === k ? ' ✓' : ''}</b><span style="white-space:normal">${esc(v.desc)}</span></button>`).join('')}`;
+  pop.hidden = false;
+}
+$('#effortBtn').addEventListener('click', () => (state.pop === 'effort' ? closePop() : openEffortPop()));
+
+function openConvMenu() {
+  state.pop = 'conv';
+  const has = !!state.convId;
+  const item = (cmd, icon, label, hint, on = true) => `<button type="button" class="pop-item perm-item ${on ? '' : 'disabled'}" ${on ? `data-pick-cmd="${cmd}"` : ''}><b>${icon}${label}</b><span>${esc(hint)}</span></button>`;
+  pop.innerHTML = `<div class="pop-group">Conversation</div><div class="pop-grid">
+    ${item('rename', I.edit, 'Renommer', 'Donner un titre clair', has)}
+    ${item('fork', I.fork, 'Dupliquer', 'Explorer une autre piste', has)}
+    ${item('compact', I.memory, 'Résumer (/compact)', 'Alléger le contexte', has)}
+    ${item('export', I.download, 'Exporter en Markdown', 'Ctrl Maj E', has)}
+    ${item('clear', I.plus, 'Nouvelle conversation', 'Ctrl K')}
+    ${item('help', I.keyboard, 'Raccourcis', 'Ctrl /')}
+  </div>`;
+  pop.hidden = false;
+}
+$('#convMenuBtn').addEventListener('click', () => (state.pop === 'conv' ? closePop() : openConvMenu()));
+
+async function compact(focus = '') {
+  if (!state.convId) return toast('Rien à résumer pour l’instant.');
+  await send(`/compact ${focus}`.trim(), { mode: state.mode, command: 'compact', attachments: [] });
+}
+
+/* ==========================================================================
+   Barre latérale et panneau de travail
+   ========================================================================== */
+function toggleSidebar() {
+  if (matchMedia('(max-width: 900px)').matches) { $('#app').classList.toggle('nav-open'); scrim.hidden = !$('#app').classList.contains('nav-open'); return; }
+  state.prefs.sidebar = !state.prefs.sidebar;
+  savePrefs();
+}
+$('#sideToggle').addEventListener('click', toggleSidebar);
+
+state.panelOpen = false;
+function setPanel(open) {
+  state.panelOpen = !!open;
+  $('#inspector').hidden = !state.panelOpen;
+  $('#app').classList.toggle('with-panel', state.panelOpen);
+  $('#panelToggle').classList.toggle('on', state.panelOpen);
+  if (state.prefs.panel !== state.panelOpen) { state.prefs.panel = state.panelOpen; savePrefs(); }
+  if (state.panelOpen) { renderInspector(); if (state.project && !state.git) refreshGit().then(renderInspector); }
+}
+function openPanel(tab) { state.inspTab = tab; setPanel(true); renderInspector(); }
+$('#panelToggle').addEventListener('click', () => setPanel(!state.panelOpen));
+$('#inspClose').addEventListener('click', () => setPanel(false));
+
+let inspTimer = null;
+function renderInspectorSoon() { clearTimeout(inspTimer); inspTimer = setTimeout(renderInspector, 300); }
+
+/** Toutes les parties des réponses de la conversation, y compris celle en cours. */
+function allParts() {
+  const parts = [];
+  for (const m of state.convMessages) if (m.role !== 'user') parts.push(...(m.parts || []));
+  if (state.streaming) parts.push(...state.streaming.view.parts);
+  return parts;
+}
+
+function collectChanges() {
+  const map = new Map();
+  allParts().forEach((p) => {
+    if (p.type !== 'step' || p.kind !== 'edit' || p.status === 'error') return;
+    const file = p.diff?.path || String(p.input || '').split('\n')[0].replace(/^[+~−-]\s*/, '') || p.title;
+    const key = String(file);
+    const cur = map.get(key) || { path: key, edits: 0, add: 0, del: 0, diffs: [], agent: p.agent };
+    cur.edits++;
+    if (p.diff) {
+      cur.diffs.push(p.diff);
+      cur.add += p.diff.new ? p.diff.new.split('\n').length : 0;
+      cur.del += p.diff.old ? p.diff.old.split('\n').length : 0;
+    }
+    map.set(key, cur);
+  });
+  return [...map.values()];
+}
+
+function renderInspector() {
+  if (!state.panelOpen) return;
+  const body = $('#inspBody');
+  $$('#inspTabs [data-insp]').forEach((b) => b.classList.toggle('on', b.dataset.insp === state.inspTab));
+  const tab = state.inspTab;
+  if (tab === 'tasks') {
+    const todos = state.todos;
+    body.innerHTML = todos?.length
+      ? `${todosEl({ items: todos }).outerHTML}<p class="note">La liste est tenue par l’IA pendant son travail (outil TodoWrite de Claude Code, plan de Codex).</p>`
+      : `<div class="insp-empty">${I.plan}<b>Pas encore de tâches</b><span>Pour les demandes en plusieurs étapes, l’IA dresse ici sa liste de tâches et la coche au fur et à mesure.</span></div>`;
+    return;
+  }
+  if (tab === 'changes') {
+    const ch = collectChanges();
+    state.changes = ch;
+    body.innerHTML = ch.length
+      ? `<div class="insp-sub">${ch.length} fichier${ch.length > 1 ? 's' : ''} modifié${ch.length > 1 ? 's' : ''} dans cette conversation</div>
+        <div class="file-rows">${ch.map((c, i) => `<button type="button" class="file-row" data-insp-diff="${i}"><span class="avatar mini" data-agent="${esc(c.agent || 'claude')}"></span>
+          <span class="fr-name"><b>${esc(String(c.path).split(/[\\/]/).pop())}</b><span>${esc(c.path)}</span></span>
+          <span class="fr-stat">${c.add ? `<em class="add">+${c.add}</em>` : ''}${c.del ? `<em class="del">−${c.del}</em>` : ''}${!c.add && !c.del ? `${c.edits}×` : ''}</span></button>`).join('')}</div>`
+      : `<div class="insp-empty">${I.file}<b>Aucune modification</b><span>Les fichiers créés ou modifiés par les IA dans cette conversation s’affichent ici, avec leur diff.</span></div>`;
+    return;
+  }
+  if (tab === 'git') {
+    if (!state.project) { body.innerHTML = `<div class="insp-empty">${I.branch}<b>Pas de projet ouvert</b><span>Ouvre un dossier pour voir son état Git.</span></div>`; return; }
+    const g = state.git;
+    if (!g) { body.innerHTML = '<p class="note"><span class="spinner"></span> Lecture de Git…</p>'; refreshGit().then(renderInspector); return; }
+    if (g.error) { body.innerHTML = `<div class="insp-empty">${I.alert}<b>Git indisponible</b><span>${esc(g.error)}</span></div>`; return; }
+    if (!g.repo) {
+      body.innerHTML = `<div class="insp-empty">${I.branch}<b>Pas de dépôt Git</b><span>Avec Git, tu peux annuler n’importe quelle modification des IA. Demande « initialise un dépôt Git et fais un premier commit ».</span></div>`;
+      return;
+    }
+    body.innerHTML = `<div class="git-head">${I.branch}<b>${esc(g.branch || 'HEAD')}</b>${g.ahead ? `<span class="pill">↑ ${g.ahead}</span>` : ''}${g.behind ? `<span class="pill">↓ ${g.behind}</span>` : ''}
+        <button type="button" class="icon-btn sm right" data-git-refresh title="Actualiser">${I.retry}</button></div>
+      ${g.last ? `<p class="note mono-note">Dernier commit : ${esc(g.last)}</p>` : ''}
+      ${g.files.length ? `<div class="insp-sub">${g.files.length} changement${g.files.length > 1 ? 's' : ''}</div>
+        <div class="file-rows">${g.files.map((f) => `<button type="button" class="file-row" data-git-file="${esc(f.path)}"><span class="git-code" data-code="${esc(f.code.trim()[0] || '?')}">${esc(f.code.trim() || '?')}</span>
+          <span class="fr-name"><b>${esc(f.path.split('/').pop())}</b><span>${esc(f.path)}</span></span>
+          <span class="fr-stat">${f.add ? `<em class="add">+${f.add}</em>` : ''}${f.del ? `<em class="del">−${f.del}</em>` : ''}</span></button>`).join('')}</div>
+        <div class="commit-box"><textarea class="textarea" id="commitMsg" rows="2" placeholder="Message du commit"></textarea>
+          <div class="perm-actions"><button type="button" class="btn sm primary" data-git-commit>Commit de tout</button><button type="button" class="btn sm" data-git-ask>Laisser l’IA écrire le message</button></div></div>`
+        : '<p class="note">Rien à commiter : le dossier est propre.</p>'}`;
+    return;
+  }
+  // Session
+  const msgs = state.convMessages;
+  const stats = msgs.filter((m) => m.stats).map((m) => m.stats);
+  const sum = (k) => stats.reduce((n, s) => n + (Number(s[k]) || 0), 0);
+  const tools = allParts().filter((p) => p.type === 'step' && p.kind !== 'thinking').length;
+  const last = stats.at(-1);
+  body.innerHTML = `<div class="kv">
+      <span>Conversation</span><b>${state.convId ? esc($('#convTitle').textContent) : 'nouvelle'}</b>
+      <span>Messages</span><b>${msgs.length}</b>
+      <span>Actions des IA</span><b>${tools}</b>
+      ${sum('turns') ? `<span>Tours d’agent</span><b>${sum('turns')}</b>` : ''}
+      ${sum('tokensIn') || sum('tokensOut') ? `<span>Tokens (entrée / sortie)</span><b>${fmtTok(sum('tokensIn'))} / ${fmtTok(sum('tokensOut'))}</b>` : ''}
+      ${sum('cost') ? `<span>Coût estimé (API)</span><b>${sum('cost').toFixed(2).replace('.', ',')} $</b>` : ''}
+      ${last?.model ? `<span>Modèle</span><b class="mono">${esc(last.model)}</b>` : ''}
+      ${last?.mcp?.length ? `<span>Serveurs MCP</span><b class="mono">${esc(last.mcp.join(', '))}</b>` : ''}
+      ${state.project ? `<span>Projet</span><b class="mono">${esc(state.project.path)}</b><span>Mode</span><b>${esc(PERM_INFO[state.perm].label)}</b><span>Réflexion</span><b>${esc(EFFORT_INFO[state.prefs.effort].label)}</b>` : ''}
+    </div>
+    <div class="insp-actions">
+      ${state.project ? '<button type="button" class="btn sm" data-open-memory>Modifier CLAUDE.md</button>' : ''}
+      ${state.convId ? `<button type="button" class="btn sm" data-pick-cmd="compact">${I.memory}Résumer</button><button type="button" class="btn sm" data-pick-cmd="fork">${I.fork}Dupliquer</button><button type="button" class="btn sm" data-pick-cmd="export">${I.download}Exporter</button>` : ''}
+    </div>`;
+}
+
+function showChangeDiff(i) {
+  const c = state.changes?.[i];
+  if (!c) return;
+  showModal(String(c.path).split(/[\\/]/).pop());
+  mBody.innerHTML = `<p class="note mono-note">${esc(c.path)}</p>${c.diffs.length ? c.diffs.map(diffHtml).join('') : '<p class="note">Pas de diff détaillé pour cette modification (Codex et Grok indiquent seulement le fichier). Ouvre l’onglet Git pour le diff complet.</p>'}`;
+}
+
+/* ---------- Git ---------- */
+async function refreshGit() {
+  if (!state.project) { state.git = null; renderBranch(); return; }
+  const dir = state.project.path;
+  try { state.git = await api(`/api/projects/git?path=${encodeURIComponent(dir)}`); }
+  catch (e) { state.git = { error: e.message }; }
+  if (state.project?.path !== dir) return;
+  renderBranch();
+  if (state.panelOpen && state.inspTab === 'git') renderInspector();
+}
+
+function renderBranch() {
+  const b = $('#branchBtn');
+  const g = state.git;
+  b.hidden = !(state.project && g?.repo);
+  if (!b.hidden) b.innerHTML = `${I.branch}<span>${esc(g.branch || 'HEAD')}</span>${g.files.length ? `<em>${g.files.length}</em>` : ''}`;
+  renderStatusline();
+}
+$('#branchBtn').addEventListener('click', () => openPanel('git'));
+
+async function showGitDiff(file) {
+  showModal(file.split('/').pop());
+  mBody.innerHTML = '<p class="note"><span class="spinner"></span> Chargement du diff…</p>';
+  try {
+    const { diff } = await api(`/api/projects/git/diff?path=${encodeURIComponent(state.project.path)}&file=${encodeURIComponent(file)}`);
+    const lines = String(diff || '').split('\n');
+    mBody.innerHTML = `<p class="note mono-note">${esc(file)}</p><div class="diff"><pre>${lines.slice(0, 4000).map((l) => {
+      const k = l.startsWith('+++') || l.startsWith('---') || l.startsWith('diff ') || l.startsWith('index ') ? 'meta' : l.startsWith('@@') ? 'hunk' : l.startsWith('+') ? 'add' : l.startsWith('-') ? 'del' : 'ctx';
+      return `<span class="dl ${k}">${esc(l)}</span>`;
+    }).join('')}</pre></div>`;
+  } catch (e) { mBody.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
+}
+
+async function gitCommitFromPanel(btn) {
+  const msg = $('#commitMsg')?.value.trim();
+  if (!msg) return toast('Écris un message de commit.', true);
+  btn.disabled = true;
+  try {
+    await api('/api/projects/git/commit', { method: 'POST', body: { path: state.project.path, message: msg } });
+    toast('Commit enregistré');
+    await refreshGit();
+  } catch (e) { toast(e.message, true); }
+  btn.disabled = false;
+  renderInspector();
+}
+
+/* ---------- Mémoire du projet (CLAUDE.md) ---------- */
+async function openMemory(name = 'CLAUDE.md') {
+  if (!state.project) return toast('Ouvre d’abord un projet.', true);
+  closePop();
+  showModal(`Mémoire · ${state.project.name}`);
+  mBody.innerHTML = '<p class="note">Chargement…</p>';
+  try {
+    const m = await api(`/api/projects/memory?path=${encodeURIComponent(state.project.path)}&name=${encodeURIComponent(name)}`);
+    mBody.innerHTML = `<div class="seg" style="margin-bottom:12px">${['CLAUDE.md', 'AGENTS.md'].map((n) => `<button type="button" data-open-memory="${n}" class="${n === name ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <p class="note" style="margin:0 0 10px">${name === 'CLAUDE.md' ? 'Claude Code relit ce fichier au début de chaque session : décris le projet, les commandes utiles et tes conventions.' : 'Codex (ChatGPT) lit AGENTS.md de la même façon.'} ${m.exists ? '' : '<b>Le fichier n’existe pas encore.</b> Astuce : <code>/init</code> le fait écrire par Claude.'}</p>
+      <textarea class="textarea mono tall" id="memText" spellcheck="false" placeholder="# Mon projet\n\n- Lancer : …\n- Conventions : …">${esc(m.text)}</textarea>`;
+    mFoot.hidden = false;
+    mFoot.innerHTML = `<button type="button" class="btn primary" data-save-memory="${esc(name)}">${I.check}Enregistrer</button><span class="note right mono-note">${esc(m.path)}</span>`;
+  } catch (e) { mBody.innerHTML = `<p class="note">${esc(e.message)}</p>`; }
+}
+
+async function saveMemory(btn) {
+  try {
+    await api('/api/projects/memory', { method: 'PUT', body: { path: state.project.path, name: btn.dataset.saveMemory, text: $('#memText').value } });
+    toast(`${btn.dataset.saveMemory} enregistré`);
+    refreshGit();
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---------- Serveurs MCP ---------- */
+const MCP_EXAMPLE = JSON.stringify({
+  mcpServers: {
+    filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', 'C:\\\\chemin\\\\vers\\\\dossier'] },
+    docs: { type: 'http', url: 'https://exemple.com/mcp' },
+  },
+}, null, 2);
+
+async function renderMcpTab() {
+  mBody.innerHTML = '<p class="note">Chargement…</p>';
+  let data = { mcpServers: {} };
+  try { data = await api('/api/mcp'); } catch { /* vide */ }
+  const names = Object.keys(data.mcpServers || {});
+  mBody.innerHTML = `<p class="note" style="margin:0 0 12px">Comme dans Claude Code, ajoute des serveurs MCP pour donner de nouveaux outils à Claude quand il code dans un projet (bases de données, navigateur, documentation…). Format identique au fichier <code>.mcp.json</code> de Claude Code. En mode « Demander », chaque appel d’outil MCP te sera soumis.</p>
+    ${names.length ? `<div class="file-list" style="margin-bottom:10px">${names.map((n) => `<span><code>${esc(n)}</code><i>${esc(data.mcpServers[n].url ? 'distant' : 'local')}</i></span>`).join('')}</div>` : ''}
+    <textarea class="textarea mono tall" id="mcpText" spellcheck="false">${esc(JSON.stringify(data, null, 2))}</textarea>
+    <p class="note warn">Un serveur MCP local est un programme qui tourne sur ton PC : n’ajoute que des serveurs de confiance.</p>`;
+  mFoot.hidden = false;
+  mFoot.innerHTML = `<button type="button" class="btn primary" data-save-mcp>${I.check}Enregistrer</button><button type="button" class="btn" data-mcp-example>Insérer un exemple</button><span class="note right">Pris en compte au prochain message.</span>`;
+}
+
+async function saveMcp(btn) {
+  btn.disabled = true;
+  try { await api('/api/mcp', { method: 'PUT', body: { text: $('#mcpText').value } }); toast('Serveurs MCP enregistrés'); renderMcpTab(); }
+  catch (e) { toast(e.message, true); }
+  btn.disabled = false;
+}
+
+/* ==========================================================================
+   Palette de commandes (Ctrl Maj P) et recherche de conversations (Ctrl P)
+   ========================================================================== */
+const palette = $('#palette');
+const palInput = $('#paletteInput');
+let palItems = [];
+let palIndex = 0;
+let palMode = 'all';
+
+function openPalette(mode = 'all') {
+  palMode = mode;
+  closePop();
+  palette.hidden = false;
+  palInput.value = '';
+  palInput.placeholder = mode === 'conv' ? 'Rechercher une conversation…' : 'Commande, conversation, skill…';
+  renderPalette();
+  palInput.focus();
+}
+function closePalette() { palette.hidden = true; input.focus(); }
+
+function renderPalette() {
+  const q = palInput.value.trim().toLowerCase();
+  const match = (s) => !q || String(s).toLowerCase().includes(q);
+  const items = [];
+  if (palMode !== 'conv') {
+    for (const c of visibleCommands()) if (match(`${c.name} ${c.desc} ${(c.alias || []).join(' ')}`)) items.push({ group: 'Commandes', label: `/${c.name}`, hint: c.desc, run: () => c.run('') });
+    const actions = [
+      ['Nouvelle conversation', 'Ctrl K', () => newChat()],
+      ['Ouvrir un projet', '', () => openProjects()],
+      ['Panneau de travail', 'Ctrl J', () => setPanel(!state.panelOpen)],
+      ['Barre latérale', 'Ctrl B', () => toggleSidebar()],
+      ['Dicter', 'Ctrl M', () => toggleVoice()],
+      ['Thème clair / sombre', '', () => { state.prefs.theme = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark'; savePrefs(); }],
+      ...Object.entries(PERM_INFO).map(([k, v]) => [`Mode : ${v.label}`, '', () => setPerm(k)]),
+      ['Connexions aux IA', '', () => openSettings('connexions')],
+      ['Images générées', '', () => openGallery()],
+      ['Designs', '', () => openDesigns()],
+    ];
+    for (const [label, hint, run] of actions) if (match(label)) items.push({ group: 'Actions', label, hint, run });
+    for (const s of state.skills) if (q && match(`${s.name} ${s.slug}`)) items.push({ group: 'Skills', label: s.name, hint: `/${s.slug}`, run: () => setSkill(s.slug) });
+  }
+  for (const c of state.convs) if (match(c.title)) items.push({ group: 'Conversations', label: c.title || 'Sans titre', hint: c.project ? c.project.split(/[\\/]/).pop() : '', run: () => openConv(c.id) });
+  palItems = items.slice(0, 80);
+  palIndex = Math.min(palIndex, Math.max(0, palItems.length - 1));
+  let last = '';
+  $('#paletteList').innerHTML = palItems.length ? palItems.map((it, i) => {
+    const head = it.group !== last ? `<div class="pop-group">${esc(it.group)}</div>` : '';
+    last = it.group;
+    return `${head}<button type="button" class="pal-item ${i === palIndex ? 'active' : ''}" data-palette-item="${i}"><b>${esc(it.label)}</b><span>${esc(it.hint || '')}</span></button>`;
+  }).join('') : '<div class="pop-empty">Aucun résultat.</div>';
+}
+
+function runPaletteItem(i) {
+  const it = palItems[i];
+  if (!it) return;
+  palette.hidden = true;
+  it.run();
+}
+
+palInput.addEventListener('input', () => { palIndex = 0; renderPalette(); });
+palInput.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    palIndex = (palIndex + (e.key === 'ArrowDown' ? 1 : -1) + palItems.length) % Math.max(palItems.length, 1);
+    $$('.pal-item', palette).forEach((b, i) => b.classList.toggle('active', i === palIndex));
+    $$('.pal-item', palette)[palIndex]?.scrollIntoView({ block: 'nearest' });
+  }
+  if (e.key === 'Enter') { e.preventDefault(); runPaletteItem(palIndex); }
+});
+palette.addEventListener('mousedown', (e) => { if (e.target === palette) closePalette(); });
+$('#openPalette').addEventListener('click', () => { closeNav(); openPalette(); });
+
+/* ---------- Aide : raccourcis et commandes ---------- */
+const SHORTCUTS = [
+  ['Entrée', 'Envoyer (Maj+Entrée : nouvelle ligne)'],
+  ['Ctrl K', 'Nouvelle conversation'],
+  ['Ctrl P', 'Rechercher une conversation'],
+  ['Ctrl Maj P', 'Palette de commandes'],
+  ['Ctrl B', 'Afficher / masquer la barre latérale'],
+  ['Ctrl J', 'Panneau de travail (tâches, modifs, Git)'],
+  ['Ctrl M', 'Dicter au micro'],
+  ['Maj Tab', 'Changer de mode : Demander → Accepter les modifs → Plan'],
+  ['↑', 'Rappeler le dernier message (champ vide)'],
+  ['Échap', 'Arrêter la réponse, fermer une fenêtre, couper le micro'],
+  ['Ctrl ,', 'Réglages'],
+  ['Ctrl /', 'Cette aide'],
+  ['Ctrl Maj E', 'Exporter la conversation en Markdown'],
+];
+
+function helpHtml() {
+  return `<div class="group-title">Raccourcis</div>
+    <div class="kbd-grid">${SHORTCUTS.map(([k, d]) => `<span>${k.split(' ').map((x) => `<kbd>${esc(x)}</kbd>`).join(' ')}</span><span>${esc(d)}</span>`).join('')}</div>
+    <div class="group-title">Dans le champ de message</div>
+    <div class="kbd-grid">
+      <span><kbd>/</kbd></span><span>Commandes (/compact, /plan, /init, /review, /memory…) et skills</span>
+      <span><kbd>@</kbd></span><span>Mentionner une IA, ou un fichier du projet ouvert</span>
+      <span><kbd>!</kbd></span><span>Lancer une commande dans le dossier du projet (ex. <code>!git status</code>)</span>
+    </div>
+    <div class="group-title">Commandes</div>
+    <div class="kbd-grid">${COMMANDS.map((c) => `<span><code>/${c.name}</code></span><span>${esc(c.desc)}</span>`).join('')}</div>`;
+}
+
+function openHelp() {
+  closePop();
+  showModal('Raccourcis et commandes');
+  mBody.innerHTML = helpHtml();
+}
+
 /* ---------- Démarrage ---------- */
 (async function init() {
+  document.documentElement.dataset.width = state.prefs.width;
+  $('#app').classList.toggle('side-hidden', !state.prefs.sidebar);
   setMode('claude');
   updateSendBtn();
   await Promise.all([loadStatus(), loadSkills(), loadConvs()]);
   renderEmpty();
+  if (state.prefs.panel && matchMedia('(min-width: 1200px)').matches) setPanel(true);
+  if (!voiceSupport.mic && !voiceSupport.browser) $('#micBtn').hidden = true;
   loadUsage();
   loadModels();
   input.focus();

@@ -15,6 +15,8 @@ import { listProjects, touchProject, forgetProject, pickFolder, revealFolder, de
 import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
+import { transcribe, voiceEngines } from './lib/voice.js';
+import { projectFiles, shellCommand, gitStatus, gitDiff, gitCommit, readMemory, writeMemory, readMcp, writeMcp, saveUpload, getUpload } from './lib/workspace.js';
 
 const PORT = Number(getConfig().PORT) || 4321;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
@@ -29,28 +31,37 @@ const MIME = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.json': 'application/json; charset=utf-8',
+  '.gif': 'image/gif',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/plain; charset=utf-8',
+  '.pdf': 'application/pdf',
 };
+
+const COMPACT_PROMPT = 'Résume toute cette conversation pour pouvoir la poursuivre avec un contexte réduit : objectif de l’utilisateur, décisions prises, fichiers créés ou modifiés (chemins), état actuel du travail, problèmes en cours et prochaines étapes. Sois complet mais concis, en Markdown. Ne modifie aucun fichier.';
 
 function json(res, status, data) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
 }
 
-function readBody(req) {
+function readRaw(req, max = 2_000_000) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (c) => {
       size += c.length;
-      if (size > 2_000_000) { reject(new Error('Requête trop grande')); req.destroy(); }
+      if (size > max) { reject(new Error('Requête trop grande')); req.destroy(); }
       else chunks.push(c);
     });
-    req.on('end', () => {
-      try { resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}); }
-      catch { reject(new Error('JSON invalide')); }
-    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+}
+
+async function readBody(req, max = 2_000_000) {
+  const buf = await readRaw(req, max);
+  try { return buf.length ? JSON.parse(buf.toString('utf8')) : {}; }
+  catch { throw new Error('JSON invalide'); }
 }
 
 function serveFile(res, root, rel) {
@@ -60,7 +71,8 @@ function serveFile(res, root, rel) {
     if (err || !st.isFile()) return json(res, 404, { error: 'Introuvable' });
     res.writeHead(200, {
       'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'cache-control': root === paths.images ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'cache-control': root === paths.images || root === paths.uploads ? 'public, max-age=31536000, immutable' : 'no-cache',
+      ...(root === paths.uploads ? { 'content-security-policy': 'sandbox', 'x-content-type-options': 'nosniff' } : {}),
     });
     fs.createReadStream(file).pipe(res);
   });
@@ -81,6 +93,8 @@ function makeAsker(convId, send, signal) {
   return (req) => new Promise((resolve) => {
     const tool = String(req.tool_name || '');
     const always = alwaysAllowed.get(convId) || new Set();
+    // Mode plan : le plan est affiché dans l'interface, l'utilisateur l'approuve avant toute modification.
+    if (tool === 'ExitPlanMode') return resolve({ behavior: 'deny', message: 'Le plan a été présenté à l’utilisateur. Arrête-toi ici sans rien modifier : il va l’approuver ou demander des changements.' });
     if (always.has(tool)) return resolve({ behavior: 'allow', updatedInput: req.input });
     const id = crypto.randomBytes(8).toString('hex');
     const d = describeTool(tool, req.input || {});
@@ -107,14 +121,18 @@ function makeAsker(convId, send, signal) {
 
 /* ---------- Discussion (flux SSE) ---------- */
 async function handleChat(req, res) {
-  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm } = await readBody(req);
+  const { conversationId, text, mode = 'claude', skill, relay: relayId, direct: direct0, project, perm, effort, attachments: attIds, command } = await readBody(req);
   if (!String(text || '').trim()) return json(res, 400, { error: 'Message vide' });
+  const attachments = (Array.isArray(attIds) ? attIds : []).slice(0, 12).map(getUpload).filter(Boolean);
   if (!['claude', 'chatgpt', 'grok'].includes(mode)) return json(res, 400, { error: 'Mode inconnu' });
 
   const cfg = getConfig();
   await connectorStatus(cfg);
   const av = available(cfg);
-  const intent = detectIntent(text);
+  const isShell = command === 'shell';
+  const isCompact = command === 'compact';
+  const msgText = isCompact ? `${COMPACT_PROMPT}${String(text).replace(/^\/compact\s*/, '').trim() ? `\nPoints à garder en priorité : ${String(text).replace(/^\/compact\s*/, '').trim()}` : ''}` : String(text);
+  const intent = isShell || isCompact ? { relay: null } : detectIntent(text);
   // Une @mention (« @grok une image de… ») vaut un relais explicite ; sinon c'est un simple indice pour Claude.
   let relay = relayId ? getRelay(relayId) : intent.explicit ? getRelay(intent.relay) : null;
   const hint = !relay && intent.relay ? getRelay(intent.relay) : null;
@@ -152,7 +170,11 @@ async function handleChat(req, res) {
     if (relay && !(direct && relay.kind === 'image')) direct = false;
   }
   const directRelay = relay && direct && ['image', 'ask'].includes(relay.kind);
-  conv.messages.push({ role: 'user', text: String(text), skill: forcedSkill?.slug, relay: relay?.id, direct: !!directRelay, at: Date.now() });
+  if (isShell && !inProject) return json(res, 400, { error: 'Les commandes « ! » se lancent dans un projet ouvert.' });
+  conv.messages.push({
+    role: 'user', text: msgText, skill: forcedSkill?.slug, relay: relay?.id, direct: !!directRelay, at: Date.now(),
+    ...(attachments.length ? { attachments } : {}), ...(command ? { command } : {}),
+  });
 
   res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache', connection: 'keep-alive' });
   const send = (event, data) => { if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); };
@@ -163,19 +185,29 @@ async function handleChat(req, res) {
   const turn = new Turn(send);
   turn.convId = conv.id;
   const started = Date.now();
-  const agent = directRelay ? relay.engine : inProject ? effMode : (relay || effMode === 'claude') ? 'claude' : effMode;
+  const agent = isShell ? 'shell' : directRelay ? relay.engine : inProject ? effMode : (relay || effMode === 'claude') ? 'claude' : effMode;
   send('route', { agent, relay: relay?.label || null, direct: !!directRelay, project: inProject, fallback: !inProject && (effMode !== mode || (directRelay && !direct0)) });
   let error = null;
 
   try {
-    if (!av.claude && !av.chatgpt && !av.grok) throw new Error('Aucune IA n’est connectée. Ouvre Réglages → Connexions pour connecter ton compte Claude, ChatGPT ou Grok.');
-    if (directRelay) await runRelayDirect({ cfg: inProject ? { ...cfg, PROJECT_DIR: conv.project, imageExport: true } : cfg, relay, text: stripMentions(text), turn, signal: controller.signal });
+    if (isShell) {
+      const cmd = String(text).replace(/^\s*!/, '').trim();
+      turn.step({ id: 'shell', agent: 'shell', kind: 'command', title: `Commande · ${cmd.slice(0, 60)}`, input: cmd, status: 'running', output: '' });
+      let acc = '';
+      let last = 0;
+      const r = await shellCommand(conv.project, cmd, {
+        signal: controller.signal,
+        onData: (d) => { acc += d; if (Date.now() - last > 200) { last = Date.now(); turn.step({ id: 'shell', output: acc.slice(-8000) }); } },
+      });
+      turn.step({ id: 'shell', status: r.code === 0 ? 'done' : 'error', output: r.output.slice(-20000) || '(aucune sortie)', exitCode: r.code });
+    } else if (!av.claude && !av.chatgpt && !av.grok) throw new Error('Aucune IA n’est connectée. Ouvre Réglages → Connexions pour connecter ton compte Claude, ChatGPT ou Grok.');
+    else if (directRelay) await runRelayDirect({ cfg: inProject ? { ...cfg, PROJECT_DIR: conv.project, imageExport: true } : cfg, relay, text: stripMentions(text), turn, signal: controller.signal });
     else if (inProject) {
       const auth = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH' }[agent];
       if (cfg[auth] !== 'account') throw new Error(`Pour coder dans un projet, ${agent === 'chatgpt' ? 'ChatGPT' : agent === 'grok' ? 'Grok' : 'Claude'} doit être connecté par ton compte (Réglages → Connexions → Mon compte).`);
       if (!av[agent]) throw new Error(`${agent === 'chatgpt' ? 'ChatGPT (Codex)' : agent === 'grok' ? 'Grok' : 'Claude'} n’est pas connecté. Réglages → Connexions.`);
       await runProject({
-        cfg, conv, agent, perm: conv.perm || 'ask', forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL,
+        cfg, conv, agent, perm: isCompact ? 'read' : conv.perm || 'ask', effort: isCompact ? 'normal' : effort, forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL,
         askPermission: makeAsker(conv.id, send, controller.signal),
       });
     } else if (agent === 'claude') await runClaude({ cfg, conv, forcedSkill, relay, hint, turn, signal: controller.signal, baseUrl: BASE_URL });
@@ -185,7 +217,12 @@ async function handleChat(req, res) {
     if (!controller.signal.aborted) console.error('[chat]', e.message);
   }
 
-  conv.messages.push({ role: 'assistant', agent, skill: forcedSkill?.slug, relay: relay?.id, parts: turn.parts, error, ms: Date.now() - started, at: Date.now() });
+  conv.messages.push({ role: 'assistant', agent, skill: forcedSkill?.slug, relay: relay?.id, parts: turn.parts, error, ms: Date.now() - started, at: Date.now(), ...(turn.stats ? { stats: turn.stats } : {}), ...(command ? { command } : {}) });
+  // /compact : le résumé remplace l'historique, les sessions des agents repartent de zéro.
+  if (isCompact && !error) {
+    const summary = turn.parts.filter((x) => x.type === 'text').map((x) => x.text).join('\n').trim();
+    if (summary) { conv.summary = summary; conv.compactFrom = conv.messages.length; conv.sessions = {}; send('compacted', { at: conv.compactFrom }); }
+  }
   saveConversation(conv);
   if (error) send('error', { message: error });
   send('done', { ms: Date.now() - started });
@@ -234,7 +271,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/status' && m === 'GET') {
       const cfg = getConfig();
       await connectorStatus(cfg);
-      return json(res, 200, { available: available(cfg), settings: publicSettings(), skills: listSkills().length, relays: RELAYS });
+      return json(res, 200, { available: available(cfg), settings: publicSettings(), skills: listSkills().length, relays: RELAYS, voice: voiceEngines(cfg), platform: process.platform });
     }
     if (p === '/api/settings' && m === 'POST') {
       saveConfig(await readBody(req));
@@ -268,6 +305,26 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/chat' && m === 'POST') return await handleChat(req, res);
 
+    /* Voix → texte */
+    if (p === '/api/transcribe' && m === 'POST') {
+      const wav = await readRaw(req, 30_000_000);
+      try { return json(res, 200, await transcribe(getConfig(), wav, { lang: url.searchParams.get('lang') || undefined })); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
+    /* Pièces jointes */
+    if (p === '/api/upload' && m === 'POST') {
+      try { return json(res, 200, saveUpload(await readBody(req, 30_000_000))); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
+    /* Serveurs MCP supplémentaires */
+    if (p === '/api/mcp' && m === 'GET') return json(res, 200, readMcp());
+    if (p === '/api/mcp' && m === 'PUT') {
+      try { return json(res, 200, writeMcp((await readBody(req)).text)); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+
     /* Autorisations */
     r = p.match(/^\/api\/permission\/([a-f0-9]{16})$/);
     if (r && m === 'POST') {
@@ -295,12 +352,41 @@ const server = http.createServer(async (req, res) => {
       try { revealFolder((await readBody(req)).path); return json(res, 200, { ok: true }); }
       catch (e) { return json(res, 400, { error: e.message }); }
     }
+    if (p.startsWith('/api/projects/') && ['files', 'git', 'git/diff', 'git/commit', 'memory'].includes(p.slice(14))) {
+      const sub = p.slice(14);
+      const body = m === 'GET' ? {} : await readBody(req);
+      const dir = url.searchParams.get('path') || body.path;
+      try {
+        if (sub === 'files') return json(res, 200, projectFiles(dir, url.searchParams.get('q') || ''));
+        if (sub === 'git') return json(res, 200, await gitStatus(dir));
+        if (sub === 'git/diff') return json(res, 200, await gitDiff(dir, url.searchParams.get('file') || body.file));
+        if (sub === 'git/commit' && m === 'POST') return json(res, 200, await gitCommit(dir, body.message));
+        if (sub === 'memory' && m === 'GET') return json(res, 200, readMemory(dir, url.searchParams.get('name') || 'CLAUDE.md'));
+        if (sub === 'memory' && m === 'PUT') return json(res, 200, writeMemory(dir, body.name || 'CLAUDE.md', body.text));
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
     if (p === '/api/projects/info' && m === 'POST') {
       try { const { path: dir } = await readBody(req); return json(res, 200, { path: dir, name: path.basename(dir), type: detectType(dir) }); }
       catch (e) { return json(res, 400, { error: e.message }); }
     }
 
-    if (p === '/api/conversations' && m === 'GET') return json(res, 200, listConversations());
+    if (p === '/api/conversations' && m === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+      const list = listConversations();
+      if (!q) return json(res, 200, list);
+      // Recherche dans le contenu des messages, pas seulement les titres
+      const hits = [];
+      for (const c of list) {
+        if ((c.title || '').toLowerCase().includes(q)) { hits.push(c); continue; }
+        const full = getConversation(c.id);
+        for (const msg of full?.messages || []) {
+          const txt = msg.role === 'user' ? msg.text : (msg.parts || []).filter((x) => x.type === 'text').map((x) => x.text).join(' ');
+          const i = String(txt || '').toLowerCase().indexOf(q);
+          if (i >= 0) { hits.push({ ...c, snippet: String(txt).slice(Math.max(0, i - 40), i + 80).replace(/\s+/g, ' ') }); break; }
+        }
+      }
+      return json(res, 200, hits);
+    }
     if (p === '/api/conversations' && m === 'DELETE') {
       for (const c of listConversations()) deleteConversation(c.id);
       return json(res, 200, { ok: true });
@@ -309,6 +395,43 @@ const server = http.createServer(async (req, res) => {
       const all = listConversations().map((c) => getConversation(c.id));
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="relais-conversations.json"' });
       return res.end(JSON.stringify(all, null, 2));
+    }
+    r = p.match(/^\/api\/conversations\/([a-f0-9]{16})\/(truncate|fork|export\.md)$/);
+    if (r) {
+      const c = getConversation(r[1]);
+      if (!c) return json(res, 404, { error: 'Introuvable' });
+      if (r[2] === 'truncate' && m === 'POST') {
+        // Modifier un message : on repart de ce point, les sessions des agents sont reconstruites depuis l'historique.
+        const at = Math.max(0, Math.min(Number((await readBody(req)).at) || 0, c.messages.length));
+        c.messages = c.messages.slice(0, at);
+        c.sessions = {};
+        if (c.compactFrom && c.compactFrom > at) { delete c.summary; delete c.compactFrom; }
+        saveConversation(c);
+        return json(res, 200, { ok: true, count: c.messages.length });
+      }
+      if (r[2] === 'fork' && m === 'POST') {
+        const at = Number((await readBody(req)).at);
+        const copy = { ...c, id: newId(), title: `${c.title} (copie)`.slice(0, 80), createdAt: Date.now(), messages: Number.isFinite(at) && at > 0 ? c.messages.slice(0, at) : c.messages, sessions: {}, pinned: false };
+        saveConversation(copy);
+        return json(res, 200, { id: copy.id });
+      }
+      if (r[2] === 'export.md' && m === 'GET') {
+        const lines = [`# ${c.title}`, '', c.project ? `Projet : \`${c.project}\`\n` : ''];
+        for (const msg of c.messages) {
+          if (msg.role === 'user') { lines.push(`## Toi${msg.command === 'shell' ? ' (commande)' : ''}`, '', msg.text, ''); continue; }
+          lines.push(`## ${msg.agent === 'shell' ? 'Terminal' : msg.agent === 'chatgpt' ? 'ChatGPT' : msg.agent === 'grok' ? 'Grok' : 'Claude'}`, '');
+          for (const part of msg.parts || []) {
+            if (part.type === 'text') lines.push(part.text, '');
+            else if (part.type === 'step' && part.kind !== 'thinking') lines.push(`> ${part.title}${part.status === 'error' ? ' (erreur)' : ''}`, '');
+            else if (part.type === 'plan') lines.push('### Plan', '', part.text, '');
+            else if (part.type === 'todos') lines.push(...(part.items || []).map((t) => `- [${t.status === 'completed' ? 'x' : ' '}] ${t.text}`), '');
+            else if (part.type === 'image') lines.push(`![${part.prompt || 'image'}](${part.url})`, '');
+          }
+          if (msg.error) lines.push(`> Erreur : ${msg.error}`, '');
+        }
+        res.writeHead(200, { 'content-type': 'text/markdown; charset=utf-8', 'content-disposition': `attachment; filename="relais-${c.id}.md"` });
+        return res.end(lines.join('\n'));
+      }
     }
     r = p.match(/^\/api\/conversations\/([a-f0-9]{16})$/);
     if (r && m === 'GET') { const c = getConversation(r[1]); return c ? json(res, 200, c) : json(res, 404, { error: 'Introuvable' }); }
@@ -382,6 +505,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p.startsWith('/images/') && m === 'GET') return serveFile(res, paths.images, p.slice(8));
+    if (p.startsWith('/uploads/') && m === 'GET') return serveFile(res, paths.uploads, p.slice(9));
     if (p.startsWith('/api/') || p.startsWith('/internal/')) return json(res, 404, { error: 'Route inconnue' });
     if (m === 'GET') return serveFile(res, paths.public, p === '/' ? 'index.html' : p.slice(1));
     json(res, 405, { error: 'Méthode non autorisée' });
