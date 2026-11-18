@@ -19,6 +19,8 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 
 ## Aperçu
 
+![Session de code : tâches, commandes « / », panneau de travail](docs/screenshots/apercu-v3.png)
+
 | Menu « Relais » : déléguer une tâche | Connexions aux comptes |
 |---|---|
 | ![Menu Relais](docs/screenshots/menu-relais.png) | ![Réglages, Connexions](docs/screenshots/connexions.png) |
@@ -37,7 +39,17 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
   - « compare l'avis de ChatGPT et Grok » → les deux répondent en parallèle, Claude tranche
   - `@ChatGPT`, `@Grok`, `@Image`, `@design` → force l'IA ou le mode voulu
 - **Coder dans un projet** : choisis un dossier (par exemple un jeu Roblox synchronisé avec Rojo). Claude Code, Codex ou Grok Build y travaillent directement, chacun avec sa propre session.
-- **Trois niveaux d'autorisation** : *Lecture seule*, *Demander* (chaque modification est montrée avec son diff avant d'être appliquée) et *Accès complet*.
+- **Les modes d'autorisation de Claude Code** : *Lecture seule*, *Mode plan* (l'IA propose un plan, tu l'approuves avant toute modification), *Demander* (chaque modification est montrée avec son diff), *Accepter les modifs* (fichiers sans confirmation, commandes soumises à ton accord) et *Accès complet*. `Maj+Tab` passe de l'un à l'autre, comme dans Claude Code.
+- **Interface façon Claude Code desktop** :
+  - commandes `/` : `/clear`, `/compact`, `/plan`, `/init`, `/review`, `/security-review`, `/memory`, `/model`, `/effort`, `/diff`, `/export`, `/fork`, `/resume`, `/mcp`, `/help`…
+  - `@fichier` pour mentionner un fichier du projet, `!commande` pour lancer une commande dans le dossier (ex. `!git status`)
+  - palette de commandes (`Ctrl Maj P`), recherche dans le contenu des conversations (`Ctrl P`)
+  - panneau de travail (`Ctrl J`) : liste de tâches de l'IA, fichiers modifiés avec leur diff, état Git et commit, statistiques de la session
+  - réflexion de Claude visible, niveau de réflexion réglable (normal, approfondi, maximum), tokens, tours et coût sous chaque réponse
+  - pièces jointes (bouton +, glisser-déposer, coller une capture), file d'attente des messages pendant une réponse, modifier et renvoyer un message, dupliquer une conversation, export Markdown
+  - mémoire du projet (`CLAUDE.md` / `AGENTS.md`) modifiable dans l'app, serveurs MCP supplémentaires pour Claude Code
+  - notifications et son de fin quand Relais est en arrière-plan
+- **Voix** : dictée au micro (`Ctrl M`), conversation vocale (clic long sur le micro ou `/talk` : Relais envoie à chaque pause et lit la réponse à voix haute), lecture à voix haute de n'importe quelle réponse. Transcription par la reconnaissance vocale de Windows (hors ligne, gratuite), par l'API OpenAI si une clé est enregistrée (plus précise), ou par le navigateur hors de `Relais.exe`.
 - **Actions « Relais »** : image, icône de jeu, miniature 16:9, table ronde entre IA, script Luau…
 - **Skills** : des fichiers Markdown que Claude charge tout seul quand ils servent, plus l'import de skills depuis ton compte Claude ou depuis GitHub.
 - **Designs** : des maquettes HTML interactives avec aperçu en direct, des versions successives et l'export vers ton projet.
@@ -99,6 +111,7 @@ Les variables de `.env.example` :
 | `OPENAI_MODEL`, `OPENAI_IMAGE_MODEL` | modèles OpenAI | `gpt-5`, `gpt-image-1` |
 | `GROK_MODEL`, `GROK_IMAGE_MODEL` | modèles xAI | `grok-4`, `grok-2-image` |
 | `CURSOR_ENABLED`, `CURSOR_WORKSPACE`, `CURSOR_COMMAND`, `CURSOR_ALLOW_WRITES` | agent Cursor | désactivé |
+| `VOICE_ENGINE`, `VOICE_LANG`, `VOICE_OPENAI_MODEL` | dictée : moteur (`auto`, `windows`, `openai`), langue, modèle OpenAI | `auto`, `fr-FR`, `gpt-4o-mini-transcribe` |
 | `PORT` | port du serveur local | `4321` |
 
 ## Structure
@@ -114,7 +127,9 @@ lib/skills.js         skills : lecture, packs, activé/désactivé
 lib/skill-import.js   import depuis le compte Claude et GitHub
 lib/designs.js        maquettes HTML (aperçu, export vers le projet)
 lib/providers.js      appels API directs
-public/               interface web
+lib/workspace.js      fichiers du projet, Git, CLAUDE.md, commandes « ! », MCP, pièces jointes
+lib/voice.js          transcription de la voix (Windows ou OpenAI)
+public/               interface web (public/voice.js : micro et lecture à voix haute)
 skills/               skills Relais (Markdown)
 launcher/             lanceur Windows (C# + WebView2) et script de compilation
 docs/screenshots/     captures d'écran du README
@@ -128,6 +143,8 @@ Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/
 - Tes connexions aux comptes sont dans `data/accounts/`. Supprimer ce dossier déconnecte tout. **Ne partage jamais ce dossier.**
 - Les dossiers trop larges (disque entier, dossier utilisateur, Bureau, Documents…) sont refusés comme dossier de projet.
 - En *Accès complet*, les agents modifient ton projet sans confirmation : garde une sauvegarde (Git).
+- Le micro n'est autorisé que pour l'interface locale de Relais ; avec le moteur Windows, la voix ne quitte pas ton PC.
+- Les commandes `!` s'exécutent dans le dossier du projet avec tes droits : ce sont tes commandes, comme dans un terminal.
 
 ## Crédits
 
