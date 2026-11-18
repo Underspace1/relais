@@ -1432,3 +1432,10 @@ body { letter-spacing: -0.003em; }
 .beam[data-to='local'] { --ct: var(--c-local); }
 .design-head .tag { white-space: nowrap; flex: none; }
 .design-head b { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Espace utilisé (Réglages → Données) */
+.storage-row { gap: 12px; padding-top: 9px; padding-bottom: 9px; }
+.storage-row .row-text { flex: 0 0 260px; }
+.storage-row .u-meter { flex: 1; }
+.storage-size { font: 500 12px var(--mono); color: var(--text-2); min-width: 70px; text-align: right; }
+@media (max-width: 900px) { .storage-row .row-text { flex-basis: 100%; } }

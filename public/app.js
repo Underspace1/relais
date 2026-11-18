@@ -1460,6 +1460,7 @@ function renderTab() {
         ${row('Taille du texte', '', prefSeg('fontSize', [['s', 'Petit'], ['m', 'Normal'], ['l', 'Grand']]))}
         ${row('Police des réponses', 'Newsreader (serif, agréable à lire), Onest (sans empattement) ou la police de Windows.', prefSeg('chatFont', [['serif', 'Newsreader'], ['sans', 'Onest'], ['system', 'Système']]))}
         ${row('Largeur du fil', '', prefSeg('width', [['normal', 'Normale'], ['wide', 'Large'], ['full', 'Pleine']]))}
+        ${row('Fermer la fenêtre', 'Quitter : Relais s’arrête complètement et vide son cache. Rester ouvert : il continue près de l’horloge (mémoire réduite).', sel('CLOSE_TO_TRAY', [['false', 'Quitte Relais'], ['true', 'Le garde près de l’horloge']], s.CLOSE_TO_TRAY))}
         ${row('Animation au démarrage', 'Le logo qui se dessine et la signature « Relais ».', `<input type="checkbox" class="switch" data-pref-bool="splash" ${state.prefs.splash !== false ? 'checked' : ''}>`)}
         ${row('Assistant de configuration', 'Reprendre la configuration guidée : comptes, préférences, voix, projet.', '<button type="button" class="btn sm" data-open-setup>Relancer</button>')}
         ${row('Étapes dépliées', 'Afficher le détail de chaque action par défaut.', `<input type="checkbox" class="switch" data-pref-bool="stepsOpen" ${state.prefs.stepsOpen ? 'checked' : ''}>`)}
@@ -1555,13 +1556,28 @@ function renderTab() {
         ${row('Exporter', 'Toutes les conversations au format JSON.', '<a class="btn sm" href="/api/export" download>Exporter</a>')}
         ${row('Effacer l’historique', 'Supprime toutes les conversations. Irréversible.', '<button type="button" class="btn sm danger" data-clear-history>Tout effacer</button>')}
       </div>
+      <div class="group-title">Espace utilisé</div>
+      <div class="group" id="storageBox"><div class="row"><span class="note"><span class="spinner"></span> Calcul…</span></div></div>
+      <p class="note">Relais fait le ménage tout seul au démarrage puis toutes les 6 heures : fichiers temporaires, cache de la fenêtre (vidé à chaque fermeture), pièces jointes abandonnées, historiques internes des outils de plus de 30 jours. Tes conversations, images et réglages ne sont jamais effacés.</p>
       <div class="group-title">Emplacements</div>
       <div class="group">
+        ${row('Tout est dans le dossier de Relais', 'Conversations, images, réglages, connexions, outils, fichiers temporaires et cache : rien n’est écrit ailleurs sur ton PC.', '<button type="button" class="btn sm" data-reveal-root>Ouvrir le dossier</button>')}
         ${row('Données', 'Conversations, images et réglages sont rangés dans <code>relais/data</code> sur ce PC.', '')}
         ${row('Outils installés', 'Claude Code, Codex, Grok Build et Gemini CLI sont dans <code>relais/tools</code>.', '')}
         ${row('Connexions aux comptes', 'Gardées dans <code>relais/data/accounts</code>. Supprimer ce dossier déconnecte tout.', '')}
       </div>`;
+    renderStorage();
   }
+}
+
+async function renderStorage(data) {
+  const box = $('#storageBox');
+  if (!box) return;
+  try { data ||= await api('/api/storage'); } catch (e) { box.innerHTML = `<div class="row"><span class="note">${esc(e.message)}</span></div>`; return; }
+  const max = Math.max(...data.items.map((i) => i.bytes), 1);
+  box.innerHTML = `${data.items.map((i) => `<div class="row storage-row"><div class="row-text"><b>${esc(i.label)}</b></div>
+      <span class="u-meter wide"><i style="width:${Math.max(1, Math.round((i.bytes / max) * 100))}%"></i></span><span class="storage-size">${fmtSize(i.bytes)}</span></div>`).join('')}
+    <div class="row"><div class="row-text"><b>Total : ${fmtSize(data.total)}</b><span>${esc(data.root)}</span></div><button type="button" class="btn sm" data-cleanup>Faire le ménage</button></div>`;
 }
 
 /* ---------- Connexions ---------- */
@@ -2287,6 +2303,14 @@ document.addEventListener('click', async (e) => {
   if ((el = t.closest('[data-test-mic]'))) { closeModal(); return startVoice(); }
   if ((el = t.closest('[data-palette-item]'))) return runPaletteItem(Number(el.dataset.paletteItem));
   if ((el = t.closest('[data-open-setup]'))) return openSetup();
+  if ((el = t.closest('[data-cleanup]'))) {
+    el.disabled = true;
+    el.innerHTML = '<span class="spinner"></span>Ménage…';
+    try { const r = await api('/api/cleanup', { method: 'POST' }); toast(r.freed > 1048576 ? `${fmtSize(r.freed)} libérés` : 'Déjà propre'); renderStorage(r); }
+    catch (err) { toast(err.message, true); }
+    return;
+  }
+  if ((el = t.closest('[data-reveal-root]'))) { host ? host.postMessage('folder') : toast('Le dossier de Relais est celui où se trouve Relais.exe.'); return; }
   if ((el = t.closest('[data-or-check]'))) {
     el.disabled = true;
     state.orInfo = await api('/api/openrouter/key').catch((err) => ({ error: err.message }));

@@ -60,8 +60,14 @@ Filename: "{app}\Relais.exe"; Description: "Lancer Relais"; Flags: nowait postin
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM Relais.exe /T /F"; Flags: runhidden; RunOnceId: "StopRelais"
 
 [UninstallDelete]
-; Les outils téléchargés sont supprimés ; tes données (data\) sont conservées sauf si tu supprimes le dossier.
+; Toujours supprimés : outils téléchargés, caches, fichiers temporaires, journaux.
+; Tes données (conversations, connexions, images) : la désinstallation te demande.
 Type: filesandordirs; Name: "{app}\tools"
+Type: filesandordirs; Name: "{app}\data\webview"
+Type: filesandordirs; Name: "{app}\data\tmp"
+Type: filesandordirs; Name: "{app}\data\cache"
+Type: filesandordirs; Name: "{app}\data\sandbox"
+Type: files; Name: "{app}\data\relais.log"
 
 [Code]
 function WebView2Installed(): Boolean;
@@ -77,4 +83,21 @@ end;
 function NeedsWebView2(): Boolean;
 begin
   Result := not WebView2Installed();
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and DirExists(ExpandConstant('{app}\data')) then
+  begin
+    if UninstallSilent() then exit;
+    if MsgBox('Supprimer aussi tes données Relais ?' + #13#10#13#10 +
+              'Conversations, images, designs, mémoire, réglages et connexions à tes comptes IA.' + #13#10 +
+              'Choisis « Non » si tu comptes réinstaller Relais plus tard.',
+              mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+      DelTree(ExpandConstant('{app}'), True, True, True)
+    else
+      MsgBox('Tes données sont conservées dans :' + #13#10 + ExpandConstant('{app}\data'), mbInformation, MB_OK);
+  end
+  else if (CurUninstallStep = usPostUninstall) then
+    RemoveDir(ExpandConstant('{app}'));
 end;

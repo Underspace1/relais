@@ -40,9 +40,11 @@ static class Program
             if (!first) { show.Set(); return; } // déjà lancé : on affiche la fenêtre existante
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            CleanWebViewCache(); // restes d'une session précédente (fermeture brutale, plantage…)
             if (!EnsureServer()) return;
             RunApp(show);
             Shutdown();
+            CleanWebViewCache();
         }
     }
 
@@ -56,6 +58,51 @@ static class Program
         var t = new Thread(() => { while (show.WaitOne()) { try { form.BeginInvoke((Action)form.ShowFront); } catch { return; } } }) { IsBackground = true };
         t.Start();
         Application.Run(form);
+    }
+
+    /** Lit une valeur de data/config.json (réglages de l'interface). */
+    public static string Config(string key, string fallback)
+    {
+        try
+        {
+            var cfg = Path.Combine(Root, "data", "config.json");
+            if (!File.Exists(cfg)) return fallback;
+            var m = Regex.Match(File.ReadAllText(cfg), "\"" + key + "\"\\s*:\\s*\"([^\"]*)\"");
+            return m.Success ? m.Groups[1].Value : fallback;
+        }
+        catch { return fallback; }
+    }
+
+    /*
+     * Cache de la fenêtre : vidé à chaque fermeture. On garde seulement ce qui sert
+     * (préférences de l'interface, autorisation du micro), tout le reste est jetable.
+     */
+    static readonly string[] CacheDirs = {
+        "Cache", "Code Cache", "GPUCache", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache", "ShaderCache",
+        "Service Worker\\CacheStorage", "Service Worker\\ScriptCache", "blob_storage", "Session Storage", "Sessions",
+    };
+
+    public static void CleanWebViewCache()
+    {
+        var root = Path.Combine(Root, "data", "webview", "EBWebView");
+        if (!Directory.Exists(root)) return;
+        // Les processus de WebView2 peuvent mettre une seconde à libérer leurs fichiers.
+        for (int attempt = 0; attempt < 6; attempt++)
+        {
+            bool locked = false;
+            var targets = new System.Collections.Generic.List<string>();
+            foreach (var d in new[] { "GrShaderCache", "ShaderCache", "Crashpad\\reports", "Crashpad\\attachments" }) targets.Add(Path.Combine(root, d));
+            foreach (var profile in Directory.GetDirectories(root))
+                foreach (var d in CacheDirs) targets.Add(Path.Combine(profile, d));
+            foreach (var t in targets)
+            {
+                if (!Directory.Exists(t)) continue;
+                try { Directory.Delete(t, true); } catch { locked = true; }
+            }
+            try { foreach (var f in Directory.GetFiles(root, "BrowserMetrics*")) File.Delete(f); } catch { }
+            if (!locked) return;
+            Thread.Sleep(400);
+        }
     }
 
     static void ReadPort()
@@ -166,7 +213,9 @@ class MainForm : Form
         web = new Microsoft.Web.WebView2.WinForms.WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = BackColor };
         web.CreationProperties = new Microsoft.Web.WebView2.WinForms.CoreWebView2CreationProperties
         {
+            // Tout reste dans le dossier de Relais, avec un cache plafonné (16 Mo) et sans tâches de fond inutiles.
             UserDataFolder = Path.Combine(Program.Root, "data", "webview"),
+            AdditionalBrowserArguments = "--disk-cache-size=16777216 --disable-gpu-shader-disk-cache --disable-background-networking --disable-component-update --no-first-run --disable-features=msSmartScreenProtection,AutofillServerCommunication",
         };
         Controls.Add(web);
         UpdatePadding();
@@ -216,12 +265,19 @@ class MainForm : Form
             SaveBounds();
             if (!quitting && e.CloseReason == CloseReason.UserClosing)
             {
-                // Fermer la fenêtre garde Relais actif près de l'horloge (les IA continuent).
                 e.Cancel = true;
-                Hide();
-                if (!hintShown) { hintShown = true; tray.ShowBalloonTip(3000, "Relais reste ouvert", "Il continue près de l'horloge. Clic droit → Quitter Relais pour l'arrêter.", ToolTipIcon.None); }
+                if (Program.Config("CLOSE_TO_TRAY", "false") == "true")
+                {
+                    // Option : rester près de l'horloge, avec la mémoire réduite au minimum
+                    Hide();
+                    SetLowMemory(true);
+                    if (!hintShown) { hintShown = true; tray.ShowBalloonTip(3000, "Relais reste ouvert", "Il continue près de l'horloge. Clic droit → Quitter Relais pour l'arrêter.", ToolTipIcon.None); }
+                }
+                else Quit(); // par défaut, fermer la fenêtre ferme vraiment Relais
             }
         };
+        Deactivate += (s, e) => { if (WindowState == FormWindowState.Minimized) SetLowMemory(true); };
+        Activated += (s, e) => SetLowMemory(false);
         FormClosed += (s, e) => { tray.Visible = false; tray.Dispose(); };
     }
 
@@ -238,15 +294,56 @@ class MainForm : Form
         return menu;
     }
 
+    /** Fenêtre cachée ou réduite : WebView2 libère un maximum de mémoire. */
+    void SetLowMemory(bool low)
+    {
+        try
+        {
+            if (web != null && web.CoreWebView2 != null)
+                web.CoreWebView2.MemoryUsageTargetLevel = low ? Microsoft.Web.WebView2.Core.CoreWebView2MemoryUsageTargetLevel.Low : Microsoft.Web.WebView2.Core.CoreWebView2MemoryUsageTargetLevel.Normal;
+        }
+        catch { }
+    }
+
     public void ShowFront()
     {
+        SetLowMemory(false);
         Show();
         if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
         Activate();
         BringToFront();
     }
 
-    void Quit() { quitting = true; SaveBounds(); Close(); Application.Exit(); }
+    bool closingDown;
+
+    /** Quitte Relais : vide le cache de navigation (sans toucher aux préférences), puis ferme tout. */
+    async void Quit()
+    {
+        if (closingDown) return;
+        closingDown = true;
+        quitting = true;
+        SaveBounds();
+        Hide();
+        tray.Visible = false;
+        try
+        {
+            if (web != null && web.CoreWebView2 != null)
+            {
+                var kinds = Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.DiskCache
+                    | Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.CacheStorage
+                    | Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.BrowsingHistory
+                    | Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.DownloadHistory
+                    | Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.GeneralAutofill
+                    | Microsoft.Web.WebView2.Core.CoreWebView2BrowsingDataKinds.PasswordAutosave;
+                var clear = web.CoreWebView2.Profile.ClearBrowsingDataAsync(kinds);
+                await System.Threading.Tasks.Task.WhenAny(clear, System.Threading.Tasks.Task.Delay(1500));
+            }
+        }
+        catch { }
+        try { web.Dispose(); } catch { }
+        Close();
+        Application.Exit();
+    }
 
     static void OpenExternal(string uri)
     {
@@ -273,6 +370,7 @@ class MainForm : Form
             case "max": WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized; break;
             case "close": Close(); break;
             case "quit": Quit(); break;
+            case "folder": try { Process.Start("explorer.exe", "\"" + Program.Root + "\""); } catch { } break;
             case "ready": Post("{\"window\":\"" + (WindowState == FormWindowState.Maximized ? "max" : "normal") + "\",\"native\":true}"); break;
             default:
                 if (msg.StartsWith("bg:#") && msg.Length == 10)

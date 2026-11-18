@@ -16,6 +16,7 @@ import { listProjects, touchProject, forgetProject, pickFolder, revealFolder, de
 import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
+import { startHousekeeping, cleanup, storageReport } from './lib/housekeeping.js';
 import { transcribe, voiceEngines } from './lib/voice.js';
 import { orKeyInfo, AUTH_KEY } from './lib/llm.js';
 import { readMemory as readUserMemory, writeMemory as writeUserMemory } from './lib/memory.js';
@@ -385,6 +386,10 @@ const server = http.createServer(async (req, res) => {
       catch (e) { return json(res, 400, { error: e.message }); }
     }
 
+    /* Espace disque et ménage */
+    if (p === '/api/storage' && m === 'GET') return json(res, 200, storageReport());
+    if (p === '/api/cleanup' && m === 'POST') { const freed = cleanup({ startup: false }); return json(res, 200, { freed, ...storageReport() }); }
+
     /* Mémoire (faits durables sur l'utilisateur) */
     if (p === '/api/memory' && m === 'GET') return json(res, 200, { text: readUserMemory() });
     if (p === '/api/memory' && m === 'PUT') return json(res, 200, { text: writeUserMemory((await readBody(req)).text) });
@@ -616,4 +621,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Relais est prêt → ${BASE_URL}\n`);
   connectorStatus(getConfig()).catch(() => {});
+  startHousekeeping();
 });

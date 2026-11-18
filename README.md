@@ -221,6 +221,13 @@ docs/screenshots/     captures d'écran du README
 
 Créés à l'utilisation et exclus du dépôt : `node/` (Node portable), `tools/` (outils officiels), `data/` (connexions, conversations, images, réglages) et `skills/packs/` (skills importés).
 
+## Propre et léger
+
+- **Tout reste dans le dossier de Relais** : conversations, réglages, connexions, outils, et aussi les fichiers temporaires et caches des programmes qu'il lance (Claude Code, Codex, npm, serveurs MCP…), redirigés vers `data/tmp`, `data/cache` et `tools/`. Rien n'est éparpillé dans le profil Windows. Seules exceptions, propres à toute installation : le raccourci du menu Démarrer, l'entrée « Désinstaller » de Windows, et WebView2 (le moteur d'affichage d'Edge), installé seulement s'il manque.
+- **Fermer la fenêtre ferme Relais** : le serveur s'arrête et le cache de la fenêtre est vidé (les préférences sont gardées). Option dans Réglages → Général pour le garder près de l'horloge, avec la mémoire réduite au minimum.
+- **Ménage automatique** au démarrage puis toutes les 6 heures : fichiers temporaires, pièces jointes abandonnées, historiques internes des outils de plus de 30 jours, caches de téléchargement trop gros. Réglages → Données affiche l'espace utilisé et permet de faire le ménage à la main.
+- **Désinstallation complète** : les outils et caches sont supprimés, et Windows te demande si tu veux aussi effacer tes données.
+
 ## Sécurité et vie privée
 
 - Le serveur écoute uniquement sur `127.0.0.1` : il n'est pas accessible depuis le réseau.
