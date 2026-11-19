@@ -60,6 +60,10 @@ jobs:
           Copy-Item launcher/lib "$d/launcher/lib" -Recurse
           Copy-Item launcher/relais.ico "$d/launcher/"
           if (Test-Path .env.example) { Copy-Item .env.example $d }
+          # Version de cette release dans package.json : Relais la compare à la dernière release pour proposer les mises à jour
+          $pj = Get-Content "$d/package.json" -Raw | ConvertFrom-Json
+          $pj.version = '${{ steps.v.outputs.version }}'
+          $pj | ConvertTo-Json -Depth 20 | Set-Content "$d/package.json" -Encoding utf8NoBOM
           # Vérifie que le serveur démarre avec le Node embarqué
           $p = Start-Process -FilePath "$d/node/node.exe" -ArgumentList 'server.js' -WorkingDirectory $d -PassThru -WindowStyle Hidden
           $ok = $false
@@ -103,10 +107,10 @@ jobs:
             1. Télécharge **Relais-Setup.exe** ci-dessous.
             2. Double-clique dessus. Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même** (l'installateur n'est pas signé).
             3. Suis l'assistant : Relais s'installe dans ton dossier utilisateur, sans droits administrateur, avec un raccourci dans le menu Démarrer.
-            4. Au premier lancement, l'assistant de configuration t'aide à connecter tes IA. Le plus simple : une clé [OpenRouter](https://openrouter.ai/keys), rien d'autre à installer.
+            4. Au premier lancement, l'assistant de configuration t'aide à connecter tes IA : **Se connecter avec mon compte** pour utiliser tes abonnements, ou une clé [OpenRouter](https://openrouter.ai/keys) sans abonnement.
 
             Tout est inclus (Node.js portable, WebView2 installé si besoin). Windows 10 ou 11, 64 bits.
 
             **Sans installation :** télécharge `Relais-portable-windows.zip`, décompresse-le où tu veux et lance `Relais.exe`.
 
-            Pour mettre à jour, installe simplement la nouvelle version par-dessus : tes conversations et tes connexions sont conservées.
+            Relais se met à jour tout seul (à partir de la 1.2.0) : une carte « Mise à jour disponible » apparaît, clique sur « Redémarrer pour mettre à jour ». Tu peux aussi installer la nouvelle version par-dessus : tes conversations et tes connexions sont conservées.

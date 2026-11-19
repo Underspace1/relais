@@ -8,7 +8,7 @@ import { CATALOG, importClaudeSkills, importGithub, removePack } from './lib/ski
 import { listDesigns, readDesign, deleteDesign, exportDesign } from './lib/designs.js';
 import { RELAYS, getRelay } from './lib/relays.js';
 import { detectIntent, stripMentions, withEngine } from './public/intent.js';
-import { connectorStatus, install, installJob, startLogin, loginState, submitLoginCode, cancelLogin, logout, invalidateStatus, slim } from './lib/connectors.js';
+import { connectorStatus, install, installJob, connect as connectAccount, startLogin, loginState, submitLoginCode, cancelLogin, logout, invalidateStatus, slim } from './lib/connectors.js';
 import { Turn, runClaude, runDirect, runRelayDirect, runProject, runTool, buildTools, available, toolSession, askAgent, inlineEdit, PERMISSION_TOOL } from './lib/orchestrator.js';
 import { createCheckpoint, changesSince, fileDiff, revertFile, revertHunk, restoreCheckpoint } from './lib/checkpoints.js';
 import { projectRules } from './lib/rules.js';
@@ -20,6 +20,7 @@ import crypto from 'node:crypto';
 import { listModels } from './lib/models.js';
 import { usageSummary } from './lib/usage.js';
 import { startHousekeeping, cleanup, storageReport } from './lib/housekeeping.js';
+import { VERSION, updateState, checkUpdates, installUpdate, startUpdateChecks } from './lib/updates.js';
 import { transcribe, voiceEngines } from './lib/voice.js';
 import { orKeyInfo, AUTH_KEY } from './lib/llm.js';
 import { readMemory as readUserMemory, writeMemory as writeUserMemory } from './lib/memory.js';
@@ -345,7 +346,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/status' && m === 'GET') {
       const cfg = getConfig();
       await connectorStatus(cfg);
-      return json(res, 200, { available: available(cfg), settings: publicSettings(), skills: listSkills().length, relays: RELAYS, voice: voiceEngines(cfg), platform: process.platform });
+      return json(res, 200, { available: available(cfg), settings: publicSettings(), skills: listSkills().length, relays: RELAYS, voice: voiceEngines(cfg), platform: process.platform, version: VERSION });
     }
     if (p === '/api/settings' && m === 'POST') {
       saveConfig(await readBody(req));
@@ -359,7 +360,22 @@ const server = http.createServer(async (req, res) => {
       for (const id of ['claude', 'codex', 'grok', 'gemini', 'cursor']) { if (status[id]) { status[id].job = installJob(id); status[id].login = loginState(id); } }
       return json(res, 200, status);
     }
-    let r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|cursor)\/login(\/code)?$/);
+    /* Mises à jour de Relais */
+    if (p === '/api/update' && m === 'GET') return json(res, 200, url.searchParams.get('check') ? await checkUpdates({ force: true }) : updateState());
+    if (p === '/api/update/install' && m === 'POST') {
+      try {
+        const r = installUpdate();
+        json(res, 200, r);
+        // Relais se ferme pour laisser l'installateur remplacer ses fichiers
+        setTimeout(() => process.exit(0), 1500);
+        return;
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    let r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|cursor)\/connect$/);
+    if (r && m === 'POST') {
+      try { return json(res, 200, connectAccount(r[1], getConfig())); } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    r = p.match(/^\/api\/connectors\/(claude|codex|grok|gemini|cursor)\/login(\/code)?$/);
     if (r) {
       const [, id, isCode] = r;
       if (m === 'GET') return json(res, 200, loginState(id) || {});
@@ -705,4 +721,5 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Relais est prêt → ${BASE_URL}\n`);
   connectorStatus(getConfig()).catch(() => {});
   startHousekeeping();
+  startUpdateChecks(getConfig());
 });

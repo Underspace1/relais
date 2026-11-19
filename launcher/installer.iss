@@ -54,6 +54,8 @@ Name: "{autodesktop}\Relais"; Filename: "{app}\Relais.exe"; WorkingDir: "{app}";
 ; WebView2 (le moteur d'affichage d'Edge) est déjà présent sur Windows 11 ; on l'installe s'il manque.
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installation de Microsoft Edge WebView2…"; Check: NeedsWebView2; Flags: waituntilterminated
 Filename: "{app}\Relais.exe"; Description: "Lancer Relais"; Flags: nowait postinstall skipifsilent
+; Mise à jour depuis Relais (installation silencieuse) : relance Relais à la fin
+Filename: "{app}\Relais.exe"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
 ; Arrête Relais (et son serveur) avant la désinstallation
@@ -66,6 +68,7 @@ Type: filesandordirs; Name: "{app}\tools"
 Type: filesandordirs; Name: "{app}\data\webview"
 Type: filesandordirs; Name: "{app}\data\tmp"
 Type: filesandordirs; Name: "{app}\data\cache"
+Type: filesandordirs; Name: "{app}\data\updates"
 Type: filesandordirs; Name: "{app}\data\sandbox"
 Type: files; Name: "{app}\data\relais.log"
 
@@ -78,6 +81,11 @@ begin
     (RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', V) and (V <> '') and (V <> '0.0.0.0')) or
     (RegQueryStringValue(HKLM, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', V) and (V <> '') and (V <> '0.0.0.0')) or
     (RegQueryStringValue(HKCU, 'Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', V) and (V <> '') and (V <> '0.0.0.0'));
+end;
+
+function ShouldRelaunch(): Boolean;
+begin
+  Result := WizardSilent() and (Pos('/RELAUNCH', Uppercase(GetCmdTail())) > 0);
 end;
 
 function NeedsWebView2(): Boolean;

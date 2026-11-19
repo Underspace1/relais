@@ -121,6 +121,9 @@ Avant chaque message dans un projet, Relais enregistre un point de restauration.
 
 ## Télécharger (le plus simple)
 
+Relais se met à jour tout seul : dès qu'une nouvelle version sort, elle se télécharge en arrière-plan et une carte **Mise à jour disponible** apparaît en bas de la barre latérale. Clique sur **Redémarrer pour mettre à jour**, comme dans Claude Desktop (tes conversations et connexions sont gardées). Réglages → Général → *Mises à jour* pour vérifier à la main ou désactiver.
+
+
 Va dans les [**Releases**](https://github.com/Underspace1/relais/releases/latest) et télécharge **`Relais-Setup.exe`**, puis double-clique dessus. Tout est inclus (Node.js portable, WebView2 si besoin), sans droits administrateur. Windows peut afficher « Windows a protégé votre ordinateur » : clique sur *Informations complémentaires* → *Exécuter quand même* (l'installateur n'est pas signé).
 
 Sans installation : `Relais-portable-windows.zip`, à décompresser, puis lance `Relais.exe`.
@@ -161,24 +164,22 @@ Aucune dépendance npm à installer : le serveur n'utilise que Node.
 
 ## Connecter tes IA
 
-### Le plus simple : une clé OpenRouter (rien à installer)
+### Avec tes abonnements : un clic par IA
+
+Réglages → **Connexions** → **Se connecter avec mon compte Claude** (ou ChatGPT, Grok, Gemini) :
+
+1. La première fois, Relais prépare tout seul, en arrière-plan, l'outil officiel de cette IA dans `tools/` (Claude Code, Codex, Grok Build ou Gemini CLI).
+2. La page de connexion de ton compte s'ouvre : tu autorises Relais.
+3. C'est tout : Relais utilise ton abonnement (Claude Pro/Max, ChatGPT Plus/Pro, SuperGrok, Google AI), sans rien payer en plus.
+
+Pourquoi passer par l'outil officiel ? Claude, ChatGPT, Grok et Gemini ne permettent pas à une application tierce d'utiliser un abonnement directement : seuls leurs propres outils y ont droit. Relais pilote donc ces outils officiels pour toi, ce qui reste dans les règles et ne met pas ton compte en danger.
+
+### Sans abonnement : une clé OpenRouter (payante à l'usage)
 
 1. Crée une clé sur [openrouter.ai/keys](https://openrouter.ai/keys) et ajoute un peu de crédit.
-2. Réglages → **Connexions** → colle la clé dans la carte **OpenRouter** → *Enregistrer*.
+2. Réglages → **Connexions** → colle la clé dans la carte **OpenRouter** (tout en bas) → *Enregistrer*.
 
-C'est tout : Claude, ChatGPT, Grok, Gemini et Perplexity passent par cette clé, images comprises. Aucun outil n'est téléchargé. Pour coder dans un projet, Relais utilise son **agent de code intégré** (lire, chercher, modifier les fichiers, lancer des commandes), avec les mêmes modes d'autorisation que Claude Code. Relais choisit automatiquement le modèle le plus récent de chaque IA ; tu peux en imposer un dans *Modèles utilisés via OpenRouter*. Facturé à l'usage par OpenRouter.
-
-Tu peux aussi mélanger : chaque IA a son propre mode (*Mon compte*, *OpenRouter* ou *Clé API*).
-
-### Avec tes abonnements (outils officiels)
-
-Réglages → **Connexions**, pour chaque IA, mode **Mon compte** :
-
-1. **Installer** : télécharge l'outil officiel dans `tools/` (Claude Code ≈ 355 Mo, Codex ≈ 490 Mo, Grok Build via le script officiel de xAI, Gemini CLI ≈ 100 Mo).
-2. **Se connecter** : ton navigateur s'ouvre pour te connecter à ton compte.
-3. **Tester** : envoie un message de test.
-
-Chaque IA peut aussi être branchée par **clé API** (rien à installer non plus, agent intégré pour les projets). Les images Grok passent par une clé API xAI ou par OpenRouter.
+Claude, ChatGPT, Grok, Gemini et Perplexity passent alors par cette clé, images comprises, sans aucun outil à télécharger. Pour coder dans un projet, Relais utilise son **agent de code intégré**. Chaque IA peut aussi être branchée par **clé API** de son éditeur. Tu peux mélanger : chaque IA a son propre mode (*Mon compte*, *OpenRouter* ou *Clé API*).
 
 ### Cursor (option) : toutes tes IA codent via ton abonnement Cursor
 
@@ -222,6 +223,7 @@ Les variables de `.env.example` :
 | `CURSOR_COMMAND` | chemin de `cursor-agent` s'il n'est pas trouvé tout seul | vide |
 | `CURSOR_ENABLED`, `CURSOR_WORKSPACE`, `CURSOR_ALLOW_WRITES` | ancien outil « Cursor » des discussions hors projet | désactivé |
 | `VOICE_ENGINE`, `VOICE_LANG`, `VOICE_OPENAI_MODEL` | dictée : moteur (`auto`, `windows`, `openai`), langue, modèle OpenAI | `auto`, `fr-FR`, `gpt-4o-mini-transcribe` |
+| `UPDATE_CHECK` | vérifier les nouvelles versions de Relais sur GitHub | `true` |
 | `PORT` | port du serveur local | `4321` |
 
 ## Structure
@@ -245,6 +247,7 @@ lib/agent.js          agent de code intégré (sans Claude Code, Codex, Grok Bui
 lib/cursor.js         agent Cursor : installation, modèles, sessions, flux des actions
 lib/checkpoints.js    points de restauration (dépôt Git privé), garder / annuler / refuser un bloc
 lib/rules.js          règles du projet partagées par toutes les IA
+lib/updates.js        mises à jour : vérification, téléchargement vérifié, installation silencieuse
 public/vendor/        CodeMirror 5 (éditeur de code, livré avec Relais pour marcher hors ligne)
 public/               interface web (public/voice.js : micro et lecture à voix haute)
 skills/               skills Relais (Markdown)

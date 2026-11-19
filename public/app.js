@@ -5,6 +5,8 @@ import { aiLogo } from './logos.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+// Mises à jour de Relais (voir la fin du fichier)
+const upd = { info: null, checking: false, timer: null };
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -1475,6 +1477,7 @@ function renderTab() {
         ${row('Fermer la fenêtre', 'Quitter : Relais s’arrête complètement et vide son cache. Rester ouvert : il continue près de l’horloge (mémoire réduite).', sel('CLOSE_TO_TRAY', [['false', 'Quitte Relais'], ['true', 'Le garde près de l’horloge']], s.CLOSE_TO_TRAY))}
         ${row('Animation au démarrage', 'Le logo qui se dessine et la signature « Relais ».', `<input type="checkbox" class="switch" data-pref-bool="splash" ${state.prefs.splash !== false ? 'checked' : ''}>`)}
         ${row('Assistant de configuration', 'Reprendre la configuration guidée : comptes, préférences, voix, projet.', '<button type="button" class="btn sm" data-open-setup>Relancer</button>')}
+        ${row(`Mises à jour · Relais ${esc(state.status?.version || '')}`, upd.info?.available ? `Nouvelle version ${esc(upd.info.latest)} disponible.` : upd.info?.error ? `Dernière vérification impossible : ${esc(upd.info.error)}` : upd.info?.latest ? 'Tu as la dernière version.' : 'Relais vérifie les nouvelles versions au démarrage puis toutes les 6 heures.', `<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${sel('UPDATE_CHECK', [['true', 'Automatique'], ['false', 'Désactivées']], s.UPDATE_CHECK || 'true')}<button type="button" class="btn sm" data-update-check>${upd.checking ? '<span class="spinner"></span>' : ''}Rechercher</button></span>`)}
         ${row('Étapes dépliées', 'Afficher le détail de chaque action par défaut.', `<input type="checkbox" class="switch" data-pref-bool="stepsOpen" ${state.prefs.stepsOpen ? 'checked' : ''}>`)}
         ${row('Afficher la réflexion', 'Montrer les blocs « Réflexion » de Claude et Codex (repliés).', `<input type="checkbox" class="switch" data-pref-bool="showThinking" ${state.prefs.showThinking ? 'checked' : ''}>`)}
         ${row('Panneau de travail ouvert', 'Tâches, fichiers modifiés et Git à droite (Ctrl J).', `<input type="checkbox" class="switch" data-pref-bool="panel" ${state.prefs.panel ? 'checked' : ''}>`)}
@@ -1688,7 +1691,7 @@ function connPill(c) {
   const st = state.connectors?.[c.id];
   if (!st) return '<span class="pill busy">Vérification…</span>';
   if (st.installing || st.job?.running) return '<span class="pill warn busy">Installation…</span>';
-  if (!st.installed) return '<span class="pill">Non installé</span>';
+  if (!st.installed) return '<span class="pill">Pas connecté</span>';
   if (st.connected === true) return '<span class="pill ok">Connecté</span>';
   if (st.connected === null) return '<span class="pill warn">Installé</span>';
   return '<span class="pill warn">Non connecté</span>';
@@ -1725,8 +1728,49 @@ function renderConnexions() {
   const allOr = CONNECTORS.every((c) => s[c.authKey] === 'openrouter');
   const orInfo = state.orInfo;
   mBody.innerHTML = `
+    <div class="setup" style="margin:0 0 16px"><div><b>Avec tes abonnements : Claude, ChatGPT, SuperGrok, Google</b><span>Clique sur « Se connecter avec mon compte » : la page de connexion de l’IA s’ouvre, tu autorises Relais, et il utilise ton abonnement. Rien à payer en plus. Relais prépare tout seul l’outil officiel de chaque IA (une seule fois, dans <code>relais/tools</code>) et garde tes connexions dans <code>relais/data/accounts</code>.</span></div>
+    ${missing.length ? `<button type="button" class="btn" data-install-all>Tout préparer</button>` : ''}</div>${CONNECTORS.map((c) => {
+    const modes = c.modes || ['account', 'openrouter', 'api'];
+    const mode = modes.includes(s[c.authKey]) ? s[c.authKey] : modes[0];
+    const st = state.connectors?.[c.id] || {};
+    const job = st.job;
+    const keyField = `<div class="field"><label>${c.keyHint && mode === 'account' ? c.keyHint : `Clé API ${c.name}`}${s.keys?.[c.mask] ? ` <span class="note">(${esc(s.keys[c.mask])})</span>` : ''}</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:200px" type="password" data-key="${c.keyK}" placeholder="${s.keys?.[c.mask] ? 'Nouvelle clé pour remplacer' : 'Colle ta clé ici'}" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn sm" data-save-key="${c.keyK}">Enregistrer</button>${s.keys?.[c.mask] ? `<button type="button" class="btn sm danger" data-clear-key="${c.keyK}">Retirer</button>` : ''}
+      ${c.keyLink ? `<a class="btn sm" href="${c.keyLink}" target="_blank" rel="noopener noreferrer">${I.ext}Créer une clé</a>` : ''}</div></div>`;
+    const accountBlock = `
+      <div class="conn-actions">
+        ${!st.installed ? `<button type="button" class="btn primary connect-btn" data-conn="connect" data-id="${c.id}" ${job?.running ? 'disabled' : ''}>${job?.running ? `<span class="spinner"></span>Préparation de la connexion…` : `<span class="avatar mini" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span>Se connecter avec mon compte ${c.name}`}</button>` : ''}
+        ${st.installed && !st.login?.running ? `<button type="button" class="btn sm ${st.connected === true ? '' : 'primary'}" data-conn="login" data-id="${c.id}">${st.connected === true ? 'Changer de compte' : `Se connecter avec mon compte ${c.name}`}</button>` : ''}
+        ${st.installed ? `
+          <button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>
+          ${st.connected === true ? `<button type="button" class="btn sm" data-conn="logout" data-id="${c.id}">Déconnecter</button>` : ''}
+          <button type="button" class="btn sm right" data-conn="install" data-id="${c.id}" ${job?.running ? 'disabled' : ''} title="Mettre à jour ${c.tool}">${job?.running ? 'Mise à jour…' : 'Mettre à jour'}</button>` : ''}
+      </div>
+      ${loginBox(c, st.login)}
+      ${st.detail ? `<p class="note">${esc(st.detail)}</p>` : ''}
+      ${!st.installed && !job?.running ? `<p class="note">Un clic : Relais prépare l’outil officiel de ${c.name} (${esc(c.tool)}, une seule fois, en arrière-plan), puis ouvre la page de connexion de ton compte. Tu autorises, et Relais utilise ton abonnement.</p>` : ''}
+      ${job?.running && job.thenLogin ? `<p class="note"><span class="spinner"></span> Préparation de ${esc(c.tool)} (une seule fois)… La page de connexion s’ouvrira ensuite toute seule.</p><details class="conn-details"><summary>Détails</summary><pre class="conn-log">${esc((job.log || 'Démarrage…').slice(-1500))}</pre></details>` : ''}
+      ${job && ((job.running && !job.thenLogin) || job.ok === false) ? `<pre class="conn-log">${esc((job.log || 'Démarrage…').slice(-1500))}</pre>` : ''}
+      <div class="conn-test" data-test-out="${c.id}"></div>
+      ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
+      ${c.keyAlways ? keyField : ''}`;
+    const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}${!c.tool && s.keys?.[c.mask] ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button></div><div class="conn-test" data-test-out="${c.id}"></div>` : ''}`;
+    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API', local: 'Sur ce PC' };
+    const orBlock = orKey
+      ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>${c.orModel ? `<span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span>` : ""}</div><div class="conn-test" data-test-out="${c.id}"></div>`
+      : '<p class="note">Enregistre d’abord ta clé OpenRouter (tout en bas).</p>';
+    return `<div class="conn">
+      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${c.custom === 'local' ? (s.LOCAL_URL ? `${esc(s.LOCAL_URL)}${s.LOCAL_MODEL ? ` · ${esc(s.LOCAL_MODEL)}` : ''}` : 'Ollama, LM Studio, llama.cpp, Jan…') : mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${modes.length > 1 ? `<div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>` : ''}
+        <span class="note" style="flex:1;min-width:200px">${c.custom === 'local' ? c.local : mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
+      ${c.custom === 'local' ? localBlock(s) : mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
+      ${c.extra ? c.extra(s) : ''}
+    </div>`;
+  }).join('')}
+    <div class="or-sep"><span>sans abonnement : une clé payante à l’usage</span></div>
     <div class="or-card ${allOr && orKey ? 'on' : ''}">
-      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Le plus simple : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT, Grok, Gemini et Perplexity. <b>Rien à installer</b> : pas de Claude Code, Codex, Grok Build ni Gemini CLI. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
+      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Sans abonnement : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT, Grok, Gemini et Perplexity. <b>Rien à installer</b> : pas de Claude Code, Codex, Grok Build ni Gemini CLI. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
       <div class="field"><label>Clé OpenRouter${orKey ? ` <span class="note">(${esc(orKey)})</span>` : ''}</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:220px" type="password" data-key="OPENROUTER_API_KEY" placeholder="${orKey ? 'Nouvelle clé pour remplacer' : 'sk-or-v1-…'}" autocomplete="off" spellcheck="false">
         <button type="button" class="btn sm" data-save-key="OPENROUTER_API_KEY">Enregistrer</button>
@@ -1748,45 +1792,7 @@ function renderConnexions() {
         <div class="field"><label>Images Gemini</label>${modelField('OPENROUTER_GEMINI_IMAGE_MODEL', s.OPENROUTER_GEMINI_IMAGE_MODEL)}</div>
       </div></details>` : ''}
     </div>
-    <div class="or-sep"><span>ou, pour utiliser tes abonnements, IA par IA</span></div>
-    <div class="setup" style="margin:0 0 16px"><div><b>Mon compte : tes abonnements Claude, ChatGPT, SuperGrok, Google</b><span>Relais installe les outils officiels dans <code>relais/tools</code> (plusieurs centaines de Mo) et garde tes connexions dans <code>relais/data/accounts</code>. Rien dans ton dossier utilisateur.</span></div>
-    ${missing.length ? `<button type="button" class="btn primary" data-install-all>Tout installer</button>` : ''}</div>${CONNECTORS.map((c) => {
-    const modes = c.modes || ['account', 'openrouter', 'api'];
-    const mode = modes.includes(s[c.authKey]) ? s[c.authKey] : modes[0];
-    const st = state.connectors?.[c.id] || {};
-    const job = st.job;
-    const keyField = `<div class="field"><label>${c.keyHint && mode === 'account' ? c.keyHint : `Clé API ${c.name}`}${s.keys?.[c.mask] ? ` <span class="note">(${esc(s.keys[c.mask])})</span>` : ''}</label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:200px" type="password" data-key="${c.keyK}" placeholder="${s.keys?.[c.mask] ? 'Nouvelle clé pour remplacer' : 'Colle ta clé ici'}" autocomplete="off" spellcheck="false">
-      <button type="button" class="btn sm" data-save-key="${c.keyK}">Enregistrer</button>${s.keys?.[c.mask] ? `<button type="button" class="btn sm danger" data-clear-key="${c.keyK}">Retirer</button>` : ''}
-      ${c.keyLink ? `<a class="btn sm" href="${c.keyLink}" target="_blank" rel="noopener noreferrer">${I.ext}Créer une clé</a>` : ''}</div></div>`;
-    const accountBlock = `
-      <div class="conn-actions">
-        ${!st.installed ? `<button type="button" class="btn sm primary" data-conn="install" data-id="${c.id}" ${job?.running ? 'disabled' : ''}>${job?.running ? 'Installation…' : `Installer ${c.tool}`}</button>` : ''}
-        ${st.installed && !st.login?.running ? `<button type="button" class="btn sm ${st.connected === true ? '' : 'primary'}" data-conn="login" data-id="${c.id}">${st.connected === true ? 'Changer de compte' : 'Se connecter'}</button>` : ''}
-        ${st.installed ? `
-          <button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>
-          ${st.connected === true ? `<button type="button" class="btn sm" data-conn="logout" data-id="${c.id}">Déconnecter</button>` : ''}
-          <button type="button" class="btn sm right" data-conn="install" data-id="${c.id}" ${job?.running ? 'disabled' : ''} title="Mettre à jour ${c.tool}">${job?.running ? 'Mise à jour…' : 'Mettre à jour'}</button>` : ''}
-      </div>
-      ${loginBox(c, st.login)}
-      ${st.detail ? `<p class="note">${esc(st.detail)}</p>` : ''}
-      ${job && (job.running || job.ok === false) ? `<pre class="conn-log">${esc((job.log || 'Démarrage…').slice(-1500))}</pre>` : ''}
-      <div class="conn-test" data-test-out="${c.id}"></div>
-      ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
-      ${c.keyAlways ? keyField : ''}`;
-    const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}${!c.tool && s.keys?.[c.mask] ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button></div><div class="conn-test" data-test-out="${c.id}"></div>` : ''}`;
-    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API', local: 'Sur ce PC' };
-    const orBlock = orKey
-      ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>${c.orModel ? `<span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span>` : ""}</div><div class="conn-test" data-test-out="${c.id}"></div>`
-      : '<p class="note">Enregistre d’abord ta clé OpenRouter (en haut).</p>';
-    return `<div class="conn">
-      <div class="conn-head"><span class="avatar" data-agent="${c.agent}">${AGENTS[c.agent].mono}</span><div><b>${c.name}</b><span>${c.custom === 'local' ? (s.LOCAL_URL ? `${esc(s.LOCAL_URL)}${s.LOCAL_MODEL ? ` · ${esc(s.LOCAL_MODEL)}` : ''}` : 'Ollama, LM Studio, llama.cpp, Jan…') : mode === 'account' ? `via ${c.tool}${st.version ? ` ${esc(st.version)}` : ''}${st.account ? ` · ${esc(st.account)}` : ''}` : mode === 'openrouter' ? 'via OpenRouter · rien à installer' : 'via clé API · rien à installer'}</span></div><span class="right">${connPill(c)}</span></div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${modes.length > 1 ? `<div class="seg">${modes.map((v) => `<button type="button" data-auth="${c.authKey}" data-v="${v}" class="${mode === v ? 'on' : ''}">${LABELS[v]}</button>`).join('')}</div>` : ''}
-        <span class="note" style="flex:1;min-width:200px">${c.custom === 'local' ? c.local : mode === 'account' ? c.account : mode === 'openrouter' ? c.or : c.api}</span></div>
-      ${c.custom === 'local' ? localBlock(s) : mode === 'account' ? accountBlock : mode === 'openrouter' ? orBlock : apiBlock}
-      ${c.extra ? c.extra(s) : ''}
-    </div>`;
-  }).join('')}`;
+`;
   mFoot.hidden = false;
   mFoot.innerHTML = `<span class="note">La connexion se fait depuis Relais, avec une simple confirmation dans ton navigateur.</span><button type="button" class="btn sm right" data-refresh-conn>${I.retry}Actualiser</button>`;
   if (wiz.active) renderWizardFoot();
@@ -1827,7 +1833,14 @@ async function saveSettings(patch, quiet) {
 }
 
 async function connAction(action, id, btn) {
-  if (action === 'install') {
+  if (action === 'connect') {
+    btn.disabled = true;
+    await api(`/api/connectors/${id}/connect`, { method: 'POST' });
+    await new Promise((r) => setTimeout(r, 800));
+    await loadConnectors(true);
+    renderConnexions();
+    startPolling(1500, 20 * 60 * 1000);
+  } else if (action === 'install') {
     await api(`/api/connectors/${id}/install`, { method: 'POST' });
     await loadConnectors(true);
     renderConnexions();
@@ -3732,7 +3745,7 @@ async function renderWizard() {
 
   if (step === 'ia') {
     renderConnexions();
-    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA. Le plus simple : <b>une clé OpenRouter</b>, rien à installer. Pour utiliser tes abonnements (Claude Pro/Max, ChatGPT, SuperGrok, compte Google pour Gemini), choisis <b>Mon compte</b> : <b>Installer</b> puis <b>Se connecter</b>, une page s’ouvre pour confirmer.</p>`);
+    mBody.insertAdjacentHTML('afterbegin', `${progress}<p class="note" style="margin:0 0 14px">Connecte au moins une IA avec ton abonnement (Claude Pro/Max, ChatGPT, SuperGrok, compte Google pour Gemini) : <b>Se connecter avec mon compte</b>, une page s’ouvre, tu autorises Relais, c’est tout. Sans abonnement : une clé OpenRouter (payante à l’usage), tout en bas.</p>`);
     return renderWizardFoot();
   }
 
@@ -4936,3 +4949,66 @@ document.addEventListener('click', async (e) => {
   }
   if (t.closest('[data-open-rules]')) return openMemory('rules');
 });
+
+
+/* ==========================================================================
+   Mises à jour, comme dans Claude Desktop
+   ========================================================================== */
+
+function renderUpdateCard() {
+  const box = $('#updateCard');
+  const u = upd.info;
+  let dismissed = '';
+  try { dismissed = localStorage.getItem('relais.update.later') || ''; } catch { /* stockage indisponible */ }
+  if (!u?.available || dismissed === u.latest) { box.hidden = true; return; }
+  const d = u.download;
+  const pct = d?.size ? Math.min(100, Math.round((d.received / d.size) * 100)) : 0;
+  box.hidden = false;
+  box.innerHTML = `<div class="uc-head">${I.spark}<b>Mise à jour disponible</b><button type="button" class="icon-btn sm" data-update-later title="Plus tard">✕</button></div>
+    <span class="uc-sub">Relais ${esc(u.latest)} · tu as la ${esc(u.current)}</span>
+    ${!u.installable ? `<a class="btn sm primary" href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">${I.download}Télécharger</a>`
+      : d?.ready ? `<button type="button" class="btn sm primary" data-update-install>${I.retry}Redémarrer pour mettre à jour</button>`
+        : d?.error ? `<span class="uc-sub" style="color:var(--danger)">${esc(d.error)}</span><button type="button" class="btn sm" data-update-check>Réessayer</button>`
+          : `<span class="u-meter wide"><i style="width:${pct}%"></i></span><span class="uc-sub">Téléchargement… ${pct} %</span>`}
+    <a class="uc-link" href="${esc(u.url)}" target="_blank" rel="noopener noreferrer">Voir les nouveautés</a>`;
+}
+
+async function loadUpdate(check = false) {
+  upd.checking = check;
+  try { upd.info = await api(`/api/update${check ? '?check=1' : ''}`); } catch { /* hors ligne */ }
+  upd.checking = false;
+  renderUpdateCard();
+  clearTimeout(upd.timer);
+  // Pendant le téléchargement, on suit la progression ; sinon on revérifie de temps en temps
+  upd.timer = setTimeout(() => loadUpdate(false), upd.info?.download?.running ? 1500 : 10 * 60 * 1000);
+  return upd.info;
+}
+
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('[data-update-later]')) {
+    try { localStorage.setItem('relais.update.later', upd.info?.latest || ''); } catch { /* rien */ }
+    return renderUpdateCard();
+  }
+  if (t.closest('[data-update-check]')) {
+    try { localStorage.removeItem('relais.update.later'); } catch { /* rien */ }
+    upd.checking = true;
+    if (settingsTab === 'general' && !modal.hidden) renderTab();
+    const u = await loadUpdate(true);
+    if (settingsTab === 'general' && !modal.hidden) renderTab();
+    return toast(u?.available ? `Relais ${u.latest} est disponible` : u?.error ? `Vérification impossible : ${u.error}` : 'Tu as la dernière version de Relais');
+  }
+  const b = t.closest('[data-update-install]');
+  if (b) {
+    if (state.streaming) return toast('Attends la fin de la réponse en cours avant de mettre à jour.', true);
+    b.disabled = true;
+    b.innerHTML = '<span class="spinner"></span>Redémarrage…';
+    try {
+      await api('/api/update/install', { method: 'POST' });
+      // Relais se ferme ; l'installateur le relance une fois la mise à jour faite
+      setTimeout(() => (host ? host.postMessage('quit') : (document.body.innerHTML = '<p style="padding:40px;font:16px sans-serif">Mise à jour en cours… Relais va redémarrer.</p>')), 400);
+    } catch (err) { b.disabled = false; renderUpdateCard(); toast(err.message, true); }
+  }
+});
+
+setTimeout(() => loadUpdate(false), 4000);
