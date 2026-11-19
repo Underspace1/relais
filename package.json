@@ -1,6 +1,6 @@
 {
   "name": "relais",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Hub local qui relie Claude, ChatGPT, Grok et Cursor. Claude orchestre, les autres exécutent.",
   "type": "module",
   "private": true,

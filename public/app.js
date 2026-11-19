@@ -113,7 +113,7 @@ const EFFORT_INFO = {
   max: { label: 'Maximum', desc: 'Réflexion maximale (« ultrathink ») : pour les problèmes difficiles. Consomme plus.' },
 };
 // Nom de l'agent qui code dans un projet : l'outil officiel (compte) ou l'agent intégré à Relais (OpenRouter, clé API).
-const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build', gemini: 'Gemini CLI' };
+const OFFICIAL_CODER = { claude: 'Claude Code', chatgpt: 'Codex', grok: 'Grok Build', gemini: 'Antigravity' };
 const AUTH_OF = { claude: 'CLAUDE_AUTH', chatgpt: 'OPENAI_AUTH', grok: 'XAI_AUTH', gemini: 'GEMINI_AUTH', perplexity: 'PERPLEXITY_AUTH', local: 'LOCAL_URL' };
 // IA à qui l'on peut écrire directement. Perplexity cherche sur le web mais ne code pas dans un projet.
 const MODES = ['claude', 'chatgpt', 'grok', 'gemini', 'perplexity', 'local'];
@@ -1544,7 +1544,7 @@ function renderTab() {
     mBody.innerHTML = `
       <div class="group-title">Coder dans un projet</div>
       <div class="group">
-        ${row('Projets', 'Ouvre un dossier pour que Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
+        ${row('Projets', 'Ouvre un dossier pour que Claude, ChatGPT, Grok ou Gemini y travaillent directement.', '<button type="button" class="btn sm" data-goto-projects>Gérer les projets</button>')}
         ${row('Autorisation par défaut', esc(PERM_INFO[state.prefs.perm || 'ask'].desc), prefSeg('perm', [['read', 'Lecture'], ['plan', 'Plan'], ['ask', 'Demander'], ['auto', 'Modifs auto'], ['full', 'Complet']]))}
         ${row('Réflexion de Claude', esc(EFFORT_INFO[state.prefs.effort]?.desc || ''), prefSeg('effort', [['normal', 'Normale'], ['high', 'Approfondie'], ['max', 'Maximale']]))}
         ${state.project ? row(`Mémoire de ${esc(state.project.name)}`, 'CLAUDE.md : les consignes que Claude Code relit à chaque session.', '<button type="button" class="btn sm" data-open-memory>Règles du projet</button>') : ''}
@@ -1578,7 +1578,7 @@ function renderTab() {
       <div class="group">
         ${row('Tout est dans le dossier de Relais', 'Conversations, images, réglages, connexions, outils, fichiers temporaires et cache : rien n’est écrit ailleurs sur ton PC.', '<button type="button" class="btn sm" data-reveal-root>Ouvrir le dossier</button>')}
         ${row('Données', 'Conversations, images et réglages sont rangés dans <code>relais/data</code> sur ce PC.', '')}
-        ${row('Outils installés', 'Claude Code, Codex, Grok Build et Gemini CLI sont dans <code>relais/tools</code>.', '')}
+        ${row('Outils installés', 'Les outils officiels (Claude Code, Codex, Grok Build) sont rangés dans <code>relais/tools</code>. Antigravity CLI (Gemini) est installé par l’installeur de Google dans ton profil.', '')}
         ${row('Connexions aux comptes', 'Gardées dans <code>relais/data/accounts</code>. Supprimer ce dossier déconnecte tout.', '')}
       </div>`;
     renderStorage();
@@ -1599,31 +1599,31 @@ async function renderStorage(data) {
 const CONNECTORS = [
   {
     id: 'claude', agent: 'claude', name: 'Claude', authKey: 'CLAUDE_AUTH', keyK: 'ANTHROPIC_API_KEY', mask: 'anthropic', tool: 'Claude Code',
-    account: 'Ton abonnement Claude Pro ou Max, via Claude Code (outil officiel d’Anthropic). Utilise le crédit « Agent SDK » inclus chaque mois.',
-    api: 'Facturé à l’usage sur console.anthropic.com. Rien à installer : Relais code dans tes projets avec son agent intégré.',
+    account: 'Avec ton abonnement Claude Pro ou Max. Relais utilise Claude Code, l’outil officiel d’Anthropic, rangé dans le dossier de Relais.',
+    api: 'Payant à l’usage (console.anthropic.com). Rien à installer.',
     or: 'Claude via ta clé OpenRouter. Rien à installer : dans un projet, l’agent intégré de Relais lit, modifie et teste les fichiers.',
     orModel: 'OPENROUTER_CLAUDE_MODEL',
   },
   {
     id: 'codex', agent: 'chatgpt', name: 'ChatGPT', authKey: 'OPENAI_AUTH', keyK: 'OPENAI_API_KEY', mask: 'openai', tool: 'Codex',
-    account: 'Ton abonnement ChatGPT, via Codex (outil officiel d’OpenAI). Les images passent par l’outil de génération inclus, sans clé API.',
-    api: 'Facturé à l’usage sur platform.openai.com. Rien à installer.',
+    account: 'Avec ton abonnement ChatGPT (Plus, Pro…), images comprises. Relais utilise Codex, l’outil officiel d’OpenAI, rangé dans le dossier de Relais.',
+    api: 'Payant à l’usage (platform.openai.com). Rien à installer.',
     or: 'ChatGPT via ta clé OpenRouter, images comprises. Rien à installer.',
     orModel: 'OPENROUTER_GPT_MODEL',
     accountModel: ['CODEX_MODEL', 'Modèle', 'par défaut'], apiModel: ['OPENAI_MODEL', 'Modèle'],
   },
   {
     id: 'grok', agent: 'grok', name: 'Grok', authKey: 'XAI_AUTH', keyK: 'XAI_API_KEY', mask: 'xai', tool: 'Grok Build',
-    account: 'Ton abonnement SuperGrok ou X Premium+, via Grok Build (outil officiel de xAI, en bêta). Texte uniquement : les images Grok demandent une clé API.',
-    api: 'Facturé à l’usage sur console.x.ai. Nécessaire pour les images Grok.',
+    account: 'Avec ton abonnement SuperGrok ou X Premium. Relais utilise Grok Build, l’outil officiel de xAI, rangé dans le dossier de Relais. Les images Grok demandent une clé API.',
+    api: 'Payant à l’usage (console.x.ai). Nécessaire pour les images Grok.',
     or: 'Grok via ta clé OpenRouter. Rien à installer.',
     orModel: 'OPENROUTER_GROK_MODEL',
     accountModel: ['GROK_ACCOUNT_MODEL', 'Modèle', 'par défaut'], apiModel: ['GROK_MODEL', 'Modèle'], keyAlways: true,
   },
   {
-    id: 'gemini', agent: 'gemini', name: 'Gemini', authKey: 'GEMINI_AUTH', keyK: 'GEMINI_API_KEY', mask: 'gemini', tool: 'Gemini CLI',
-    account: 'Ton compte Google (gratuit, Google AI Pro ou Ultra), via Gemini CLI (outil officiel de Google). Texte et code ; pour les images Gemini, ajoute une clé API Google ou OpenRouter.',
-    api: 'Clé gratuite sur aistudio.google.com (quota limité, les images demandent un compte avec facturation). Images Nano Banana et retouches comprises. Rien à installer.',
+    id: 'gemini', agent: 'gemini', name: 'Gemini', authKey: 'GEMINI_AUTH', keyK: 'GEMINI_API_KEY', mask: 'gemini', tool: 'Antigravity CLI',
+    account: 'Avec ton compte Google (gratuit, Google AI Pro ou Ultra). Relais utilise Antigravity CLI, l’outil officiel de Google (qui remplace Gemini CLI). Pour les images Nano Banana, ajoute une clé Google ci-dessous.',
+    api: 'Clé gratuite sur aistudio.google.com : texte gratuit dans la limite d’un quota, images Nano Banana si la facturation est activée chez Google. Rien à installer.',
     or: 'Gemini via ta clé OpenRouter, images Nano Banana comprises. Rien à installer.',
     orModel: 'OPENROUTER_GEMINI_MODEL',
     accountModel: ['GEMINI_ACCOUNT_MODEL', 'Modèle', 'auto'], apiModel: ['GEMINI_MODEL', 'Modèle'], keyAlways: true,
@@ -1706,7 +1706,7 @@ function loginBox(c, lg) {
   if (c.id === 'gemini') {
     return `<div class="login-box">
     <div class="login-row"><b>Connexion à ton compte Google</b><button type="button" class="btn sm right" data-cancel-login="${c.id}">Annuler</button></div>
-    <span class="note">Une page Google s’est ouverte dans ton navigateur : choisis ton compte et accepte. Gemini CLI récupère la connexion tout seul.</span>
+    <span class="note">Une page Google s’est ouverte dans ton navigateur : choisis ton compte et accepte. Relais récupère la connexion tout seul.</span>
     <span class="note"><span class="spinner"></span> En attente de ta confirmation dans le navigateur…</span></div>`;
   }
   const step2 = c.id === 'claude'
@@ -1756,7 +1756,7 @@ function renderConnexions() {
       ${c.accountModel ? `<div class="conn-fields"><div class="field"><label>${c.accountModel[1]}</label>${modelField(c.accountModel[0], s[c.accountModel[0]], c.accountModel[2])}</div></div>` : ''}
       ${c.keyAlways ? keyField : ''}`;
     const apiBlock = `${keyField}${c.apiModel ? `<div class="conn-fields"><div class="field"><label>${c.apiModel[1]}</label>${modelField(c.apiModel[0], s[c.apiModel[0]])}</div></div>` : ''}${!c.tool && s.keys?.[c.mask] ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button></div><div class="conn-test" data-test-out="${c.id}"></div>` : ''}`;
-    const LABELS = { account: 'Mon compte', openrouter: 'OpenRouter', api: 'Clé API', local: 'Sur ce PC' };
+    const LABELS = { account: 'Mon abonnement', openrouter: 'OpenRouter · payant', api: 'Clé API · payant', local: 'Sur ce PC' };
     const orBlock = orKey
       ? `<div class="conn-actions"><button type="button" class="btn sm" data-conn="test" data-id="${c.id}">Tester</button>${c.orModel ? `<span class="note">Modèle : ${esc(modelLabel(c.orModel, s[c.orModel]))}</span>` : ""}</div><div class="conn-test" data-test-out="${c.id}"></div>`
       : '<p class="note">Enregistre d’abord ta clé OpenRouter (tout en bas).</p>';
@@ -1770,7 +1770,7 @@ function renderConnexions() {
   }).join('')}
     <div class="or-sep"><span>sans abonnement : une clé payante à l’usage</span></div>
     <div class="or-card ${allOr && orKey ? 'on' : ''}">
-      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Sans abonnement : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT, Grok, Gemini et Perplexity. <b>Rien à installer</b> : pas de Claude Code, Codex, Grok Build ni Gemini CLI. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
+      <div class="or-head"><span class="or-logo">${I.plug}</span><div><b>Sans abonnement : OpenRouter</b><span>Une seule clé pour Claude, ChatGPT, Grok, Gemini et Perplexity. <b>Rien à installer</b> : aucun outil à télécharger. Relais code aussi dans tes projets avec son agent intégré. Facturé à l’usage (tu recharges un crédit sur openrouter.ai).</span></div></div>
       <div class="field"><label>Clé OpenRouter${orKey ? ` <span class="note">(${esc(orKey)})</span>` : ''}</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap"><input class="input mono" style="flex:1;min-width:220px" type="password" data-key="OPENROUTER_API_KEY" placeholder="${orKey ? 'Nouvelle clé pour remplacer' : 'sk-or-v1-…'}" autocomplete="off" spellcheck="false">
         <button type="button" class="btn sm" data-save-key="OPENROUTER_API_KEY">Enregistrer</button>
@@ -1877,7 +1877,7 @@ async function openProjects() {
   mBody.innerHTML = '<p class="note">Chargement…</p>';
   let list = [];
   try { list = await api('/api/projects'); } catch { /* vide */ }
-  mBody.innerHTML = `<p class="note" style="margin:0 0 16px">Ouvre un dossier : Claude Code, Codex, Grok Build ou Gemini CLI y travailleront directement (lire, modifier, lancer des commandes), selon le niveau d’autorisation choisi.</p>
+  mBody.innerHTML = `<p class="note" style="margin:0 0 16px">Ouvre un dossier : Claude, ChatGPT, Grok ou Gemini y travailleront directement (lire, modifier, lancer des commandes), selon le niveau d’autorisation choisi.</p>
     <div class="proj-open">
       <button type="button" class="btn primary" data-pick-folder>${FOLDER_ICON}Choisir un dossier…</button>
       <div class="login-row" style="flex:1"><input class="input mono" id="projPath" placeholder="ou colle un chemin : C:\\Users\\toi\\mon-jeu" spellcheck="false"><button type="button" class="btn" data-open-path>Ouvrir</button></div>
@@ -3305,7 +3305,7 @@ async function gitCommitFromPanel(btn) {
 }
 
 /* ---------- Mémoire du projet (CLAUDE.md) ---------- */
-const RULE_FILES = { 'CLAUDE.md': 'Lu par Claude Code', 'AGENTS.md': 'Lu par Codex (ChatGPT), Cursor', 'GEMINI.md': 'Lu par Gemini CLI', '.cursorrules': 'Lu par Cursor' };
+const RULE_FILES = { 'CLAUDE.md': 'Lu par Claude Code', 'AGENTS.md': 'Lu par Codex (ChatGPT), Cursor', 'GEMINI.md': 'Lu par Gemini', '.cursorrules': 'Lu par Cursor' };
 async function openMemory(name = 'CLAUDE.md') {
   if (!state.project) return toast('Ouvre d’abord un projet.', true);
   closePop();
@@ -3394,7 +3394,7 @@ function drawMcp() {
   const f = mcpUi.form;
   const used = new Set(names.map((n) => n.toLowerCase()));
   mBody.innerHTML = `
-    <p class="note" style="margin:0 0 14px">Un serveur MCP donne de nouveaux outils aux IA : Roblox Studio, navigateur, documentation, GitHub… <b>Toutes les IA</b> y ont accès : Claude Code, Codex et Gemini CLI s’y connectent eux-mêmes, et Relais les branche pour les IA par OpenRouter, clé API ou IA locale.</p>
+    <p class="note" style="margin:0 0 14px">Un serveur MCP donne de nouveaux outils aux IA : Roblox Studio, navigateur, documentation, GitHub… <b>Toutes les IA</b> y ont accès : Claude Code et Codex s’y connectent eux-mêmes, et Relais les branche pour les IA par OpenRouter, clé API ou IA locale.</p>
     <div class="group-title">Tes serveurs</div>
     ${names.length ? `<div class="mcp-list">${names.map((n) => {
       const s = servers[n];
@@ -3758,7 +3758,7 @@ async function renderWizard() {
         ${choice('claude', 'Claude', 'Recommandé. Le chef d’orchestre : il répond et fait travailler les autres IA quand il faut.')}
         ${choice('chatgpt', 'ChatGPT', 'Conversation directe avec ChatGPT (et Codex dans un projet).')}
         ${choice('grok', 'Grok', 'Conversation directe avec Grok (et Grok Build dans un projet).')}
-        ${choice('gemini', 'Gemini', 'Conversation directe avec Gemini (et Gemini CLI dans un projet).')}
+        ${choice('gemini', 'Gemini', 'Conversation directe avec Gemini (et Antigravity dans un projet).')}
       </div>
       <div class="group-title">Quand une IA travaille dans ton projet</div>
       <div class="group">
@@ -3817,7 +3817,7 @@ async function renderWizard() {
   if (step === 'projet') {
     const pj = wiz.project;
     mBody.innerHTML = `${progress}
-      <div class="wiz-hero"><span class="design-ico big">${FOLDER_ICON}</span><div><h3>Un projet sur lequel travailler ?</h3><p>Choisis le dossier de ton jeu ou de ton site : Claude Code, Codex, Grok Build ou Gemini CLI y liront et modifieront les fichiers, selon l’autorisation choisie. Tu peux aussi rester en discussion libre.</p></div></div>
+      <div class="wiz-hero"><span class="design-ico big">${FOLDER_ICON}</span><div><h3>Un projet sur lequel travailler ?</h3><p>Choisis le dossier de ton jeu ou de ton site : Claude, ChatGPT, Grok ou Gemini y liront et modifieront les fichiers, selon l’autorisation choisie. Tu peux aussi rester en discussion libre.</p></div></div>
       ${pj ? `<div class="proj-card">${FOLDER_ICON}<div><b>${esc(pj.name)}</b><span>${esc(pj.path)}</span></div><span class="pill ok">${esc(pj.type || 'Dossier')}</span></div>` : ''}
       <div class="proj-open">
         <button type="button" class="btn ${pj ? '' : 'primary'}" data-wiz-pick>${FOLDER_ICON}${pj ? 'Choisir un autre dossier…' : 'Choisir un dossier…'}</button>

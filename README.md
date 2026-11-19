@@ -9,7 +9,7 @@ Claude dirige les autres : tu écris simplement ce que tu veux, et Relais envoie
 | Claude | chef d'orchestre, écrit le code de ton projet | clé OpenRouter ou clé API Anthropic | Claude Code (Pro/Max) |
 | ChatGPT | images, second avis, relecture | clé OpenRouter ou clé API OpenAI | Codex (ChatGPT) |
 | Grok | avis différent | clé OpenRouter ou clé API xAI | Grok Build (SuperGrok / X Premium+) |
-| Gemini | images (Nano Banana) et retouches, autre avis, code | clé OpenRouter ou clé API Google (AI Studio) | Gemini CLI (compte Google, Google AI Pro / Ultra) |
+| Gemini | images (Nano Banana) et retouches, autre avis, code | clé OpenRouter ou clé API Google (AI Studio) | Antigravity CLI (compte Google, Google AI Pro / Ultra) |
 | Perplexity | recherches sur le web, avec les sources | clé OpenRouter ou clé API Perplexity | — (pas d'outil officiel) |
 | IA locale | privé, gratuit, hors ligne | Ollama, LM Studio, llama.cpp, Jan (tout serveur compatible OpenAI) | — |
 | Cursor *(option)* | moteur de code : ChatGPT, Gemini, Grok (et Claude si tu veux) codent dans tes projets via ton abonnement, chacune avec son modèle | — | agent Cursor (`cursor-agent`) |
@@ -76,7 +76,7 @@ Avant chaque message dans un projet, Relais enregistre un point de restauration.
   - « compare l'avis de ChatGPT et Grok » → les deux répondent en parallèle, Claude tranche
   - « compare l'avis de ChatGPT, Grok et Gemini » → table ronde, Claude tranche
   - `@ChatGPT`, `@Grok`, `@Gemini`, `@Perplexity`, `@Image`, `@design` → force l'IA ou le mode voulu
-- **Coder dans un projet** : choisis un dossier (par exemple un jeu Roblox synchronisé avec Rojo). Claude Code, Codex, Grok Build ou Gemini CLI y travaillent directement, chacun avec sa propre session. Claude peut aussi confier une sous-tâche à Gemini (`gemini_task`) ou une recherche de documentation à Perplexity.
+- **Coder dans un projet** : choisis un dossier (par exemple un jeu Roblox synchronisé avec Rojo). Claude Code, Codex, Grok Build ou Antigravity (Gemini) y travaillent directement, chacun avec sa propre session. Claude peut aussi confier une sous-tâche à Gemini (`gemini_task`) ou une recherche de documentation à Perplexity.
 - **Cursor comme moteur de code** : avec ton abonnement Cursor, ChatGPT, Gemini et Grok (et Claude si tu le coches) codent dans tes projets via l'agent Cursor officiel, chacune avec son modèle (par défaut le plus récent de sa famille dans ton Cursor). Rien ne change pour toi : tu choisis l'IA comme avant, elle s'affiche « Gemini · Cursor ». **Claude reste le chef d'orchestre** : il découpe le travail et confie des sous-tâches aux IA qui passent par Cursor (`cursor_code`, en parallèle si possible), puis vérifie.
 - **Les fonctions de Cursor, pour toutes les IA** :
   - **points de restauration** : avant chaque message, l'état du projet est enregistré dans un dépôt Git privé (`data/checkpoints/`), sans toucher au `.git` du projet (qui peut ne pas exister). Bouton *Restaurer* sous chacun de tes messages
@@ -168,7 +168,7 @@ Aucune dépendance npm à installer : le serveur n'utilise que Node.
 
 Réglages → **Connexions** → **Se connecter avec mon compte Claude** (ou ChatGPT, Grok, Gemini) :
 
-1. La première fois, Relais prépare tout seul, en arrière-plan, l'outil officiel de cette IA dans `tools/` (Claude Code, Codex, Grok Build ou Gemini CLI).
+1. La première fois, Relais prépare tout seul, en arrière-plan, l'outil officiel de cette IA dans `tools/` (Claude Code, Codex ou Grok Build ; pour Gemini, Antigravity CLI via l'installeur officiel de Google).
 2. La page de connexion de ton compte s'ouvre : tu autorises Relais.
 3. C'est tout : Relais utilise ton abonnement (Claude Pro/Max, ChatGPT Plus/Pro, SuperGrok, Google AI), sans rien payer en plus.
 
@@ -193,14 +193,14 @@ Ensuite, dans un projet, choisis l'IA en bas à droite comme d'habitude. Les mod
 
 ### Gemini et Perplexity
 
-- **Gemini, mode Mon compte** : *Installer* Gemini CLI, puis *Se connecter* : une page Google s'ouvre dans ton navigateur, tu choisis ton compte et c'est fini. Gemini CLI demande **Node.js 20** ou plus récent. Il fait le texte et le code, pas les images : pour les images Gemini, ajoute en plus une clé API Google (champ sous la carte) ou une clé OpenRouter.
+- **Gemini, mode Mon abonnement** : *Se connecter avec mon compte Gemini* : Relais installe **Antigravity CLI** (l'outil officiel de Google, qui remplace Gemini CLI : depuis le 18 juin 2026, Gemini CLI ne marche plus avec les comptes Google personnels), puis une page Google s'ouvre, tu choisis ton compte et c'est fini. Texte et code ; pour les images Nano Banana, ajoute une clé API Google.
 - **Gemini, mode Clé API** : clé gratuite sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Le texte a un quota gratuit ; les images (Nano Banana) demandent d'activer la facturation sur le projet Google. Relais choisit tout seul le modèle Gemini Pro et le modèle d'images les plus récents.
 - **Perplexity** : clé API sur perplexity.ai (Paramètres → API, facturée à l'usage) ou ta clé OpenRouter. Pas de mode compte : Perplexity n'a pas d'outil officiel. Perplexity cherche mais ne code pas : en projet, il sert à Claude pour les recherches.
 
 Bon à savoir :
 - Claude Code en mode automatique consomme le crédit « Agent SDK » inclus dans les abonnements Pro et Max (séparé de la limite du chat).
 - Générer des images avec ChatGPT via Codex consomme les limites de l'abonnement plus vite qu'un message texte.
-- Gemini CLI avec un compte Google gratuit a une limite quotidienne de requêtes ; Google AI Pro et Ultra la relèvent.
+- Antigravity avec un compte Google gratuit a des limites hebdomadaires ; Google AI Pro et Ultra les relèvent.
 
 ## Configuration
 
@@ -233,7 +233,8 @@ server.js             serveur HTTP local + flux en direct
 lib/connectors.js     outils officiels : installation, connexion, exécution
 lib/orchestrator.js   logique de délégation (modes compte et clé API)
 lib/mcp-bridge.js     pont MCP : donne à Claude Code les outils de Relais
-lib/coders.js         agents de code dans un projet (Claude Code, Codex, Grok Build, Gemini CLI)
+lib/coders.js         agents de code dans un projet (Claude Code, Codex, Grok Build)
+lib/antigravity.js    Gemini avec ton compte Google, via Antigravity CLI
 lib/relays.js         actions « Relais »
 lib/skills.js         skills : lecture, packs, activé/désactivé
 lib/skill-import.js   import depuis le compte Claude et GitHub
@@ -243,7 +244,7 @@ lib/workspace.js      fichiers du projet, Git, CLAUDE.md, commandes « ! », MCP
 lib/voice.js          transcription de la voix (Windows ou OpenAI)
 lib/mcp-client.js     client MCP (stdio et HTTP) : outils des serveurs MCP pour toutes les IA
 lib/llm.js            appels directs : OpenRouter et clés API (flux, outils, images, sources Perplexity)
-lib/agent.js          agent de code intégré (sans Claude Code, Codex, Grok Build ni Gemini CLI)
+lib/agent.js          agent de code intégré (sans outil officiel : OpenRouter, clé API, IA locale)
 lib/cursor.js         agent Cursor : installation, modèles, sessions, flux des actions
 lib/checkpoints.js    points de restauration (dépôt Git privé), garder / annuler / refuser un bloc
 lib/rules.js          règles du projet partagées par toutes les IA
